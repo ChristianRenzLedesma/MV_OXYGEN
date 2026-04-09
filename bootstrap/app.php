@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureOtpVerified;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -16,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+        ]);
+
+        $middleware->alias([
+            'otp.verified' => EnsureOtpVerified::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

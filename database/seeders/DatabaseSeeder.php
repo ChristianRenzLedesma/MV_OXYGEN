@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Review;
 use App\Models\Coupon;
+use App\Models\Customer;
 use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
@@ -226,5 +227,11 @@ class DatabaseSeeder extends Seeder
             'valid_until' => now()->addMonths(2),
             'is_active' => true,
         ]);
+
+        // Seed customers
+        $this->call(CustomerSeeder::class);
+        
+        // Seed transactions
+        $this->call(TransactionSeeder::class);
     }
 }

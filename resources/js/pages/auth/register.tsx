@@ -1,119 +1,645 @@
-import { Head, useForm } from '@inertiajs/react';
-import { LoaderCircle } from 'lucide-react';
-import { FormEventHandler } from 'react';
+import { Head, useForm, router } from '@inertiajs/react';
+import { LoaderCircle, Eye, EyeOff, ArrowLeft, UserPlus, Shield, CheckCircle, Info, AlertTriangle, Mail, Hourglass, RotateCcw, X } from 'lucide-react';
+import { FormEventHandler, useState, useEffect } from 'react';
 
 import InputError from '@/components/input-error';
-import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import AuthLayout from '@/layouts/auth-layout';
 
 interface RegisterForm {
     name: string;
     email: string;
+    phone?: string;
     password: string;
     password_confirmation: string;
+    [key: string]: string | number | boolean | Blob | File | null | undefined;
 }
 
-export default function Register() {
+interface RegisterProps {
+    status?: string;
+    otp_sent?: string;
+    otp_error?: string;
+    user_id?: string;
+    otp_code?: string;
+}
+
+export default function Register({ status, otp_sent, otp_error, user_id, otp_code }: RegisterProps) {
     const { data, setData, post, processing, errors, reset } = useForm<RegisterForm>({
         name: '',
         email: '',
+        phone: '',
         password: '',
         password_confirmation: '',
+    });
+
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [passwordStrength, setPasswordStrength] = useState(0);
+    const [passwordStrengthText, setPasswordStrengthText] = useState('Enter a password');
+    const [passwordStrengthColor, setPasswordStrengthColor] = useState('text-muted');
+    const [passwordMatch, setPasswordMatch] = useState<'empty' | 'match' | 'nomatch'>('empty');
+    const [showOtpModal, setShowOtpModal] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [otpCode, setOtpCode] = useState('');
+    const [userId, setUserId] = useState('');
+    const [testOtpCode, setTestOtpCode] = useState('');
+
+    // Password requirements state
+    const [requirements, setRequirements] = useState({
+        length: false,
+        lowercase: false,
+        uppercase: false,
+        number: false,
+        special: false,
     });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('register'), {
-            onFinish: () => reset('password', 'password_confirmation'),
+            onSuccess: (page) => {
+                // Handle successful registration
+                if (page.props.otp_code) {
+                    setTestOtpCode(page.props.otp_code || '');
+                }
+                if (page.props.user_id) {
+                    setUserId(page.props.user_id);
+                    setShowOtpModal(true);
+                }
+                // Reset password fields after successful registration
+                reset('password', 'password_confirmation');
+            },
         });
     };
 
+    const checkPasswordStrength = (password: string) => {
+        let strength = 0;
+        const reqs = {
+            length: password.length >= 8,
+            lowercase: /[a-z]/.test(password),
+            uppercase: /[A-Z]/.test(password),
+            number: /[0-9]/.test(password),
+            special: /[^A-Za-z0-9]/.test(password),
+        };
+
+        setRequirements(reqs);
+
+        // Calculate strength based on requirements met (20% per requirement)
+        Object.values(reqs).forEach(met => {
+            if (met) strength += 20;
+        });
+
+        setPasswordStrength(strength);
+
+        if (password.length === 0) {
+            setPasswordStrengthText('Enter a password');
+            setPasswordStrengthColor('text-muted');
+        } else if (strength <= 40) {
+            setPasswordStrengthText('🔴 Weak password');
+            setPasswordStrengthColor('text-danger');
+        } else if (strength <= 60) {
+            setPasswordStrengthText('🟠 Fair strength');
+            setPasswordStrengthColor('text-warning');
+        } else if (strength <= 80) {
+            setPasswordStrengthText('🔵 Good strength');
+            setPasswordStrengthColor('text-info');
+        } else {
+            setPasswordStrengthText('🟢 Strong password');
+            setPasswordStrengthColor('text-success');
+        }
+    };
+
+    const checkPasswordMatch = () => {
+        if (data.password_confirmation.length === 0) {
+            setPasswordMatch('empty');
+        } else if (data.password === data.password_confirmation) {
+            setPasswordMatch('match');
+        } else {
+            setPasswordMatch('nomatch');
+        }
+    };
+
+    const handleOtpSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        // Handle OTP verification
+        router.post(route('otp.verify.post'), { otp: otpCode, user_id: userId });
+    };
+
+    const handleResendOtp = () => {
+        router.post(route('otp.resend'), { user_id: userId }, {
+            onSuccess: (page) => {
+                if (page.props.otp_code) {
+                    setTestOtpCode(typeof page.props.otp_code === 'string' ? page.props.otp_code : '');
+                }
+            },
+        });
+    };
+
+    useEffect(() => {
+        checkPasswordMatch();
+    }, [data.password, data.password_confirmation]);
+
+    useEffect(() => {
+        if (status || otp_sent) {
+            setShowSuccessModal(true);
+        }
+    }, [status, otp_sent]);
+
+    useEffect(() => {
+        if (user_id) {
+            setUserId(user_id);
+            setShowOtpModal(true);
+        }
+        if (otp_code) {
+            setTestOtpCode(otp_code);
+        }
+    }, [user_id, otp_code]);
+
     return (
-        <AuthLayout title="Create an account" description="Enter your details below to create your account">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center py-4">
             <Head title="Register" />
-            <form className="flex flex-col gap-6" onSubmit={submit}>
-                <div className="grid gap-6">
-                    <div className="grid gap-2">
-                        <Label htmlFor="name">Name</Label>
-                        <Input
-                            id="name"
-                            type="text"
-                            required
-                            autoFocus
-                            tabIndex={1}
-                            autoComplete="name"
-                            value={data.name}
-                            onChange={(e) => setData('name', e.target.value)}
-                            disabled={processing}
-                            placeholder="Full name"
-                        />
-                        <InputError message={errors.name} className="mt-2" />
-                    </div>
+            
+            <div className="w-full max-w-6xl px-4">
+                <div className="bg-white rounded-2xl shadow-xl overflow-hidden" style={{ minHeight: '500px' }}>
+                    <div className="flex flex-col lg:flex-row">
+                        {/* Left Image Column */}
+                        <div className="lg:w-1/2 relative hidden lg:block">
+                            <img 
+                                src="/images/hero-image.png" 
+                                alt="Oxygen Tanks" 
+                                className="w-full h-full object-cover"
+                                style={{ minHeight: '500px' }}
+                            />
+                            <div 
+                                className="absolute inset-0"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgba(30,136,229,0.3) 0%, rgba(30,136,229,0.1) 100%)'
+                                }}
+                            />
+                        </div>
+                        
+                        {/* Right Form Column */}
+                        <div className="lg:w-1/2 flex items-center justify-center p-3 md:p-4 bg-white">
+                            <div className="w-full" style={{ maxWidth: '350px' }}>
+                                {/* Back to Home */}
+                                <div className="mb-3">
+                                    <a 
+                                        href="/" 
+                                        className="flex items-center gap-2 text-decoration-none"
+                                        style={{ color: '#1E88E5' }}
+                                    >
+                                        <ArrowLeft className="w-4 h-4" />
+                                        <span>Back to Home</span>
+                                    </a>
+                                </div>
+                                
+                                {/* Welcome Title */}
+                                <div className="mb-4">
+                                    <h1 
+                                        className="fw-bold mb-1 italic"
+                                        style={{ 
+                                            fontSize: '2.5rem', 
+                                            color: '#1E88E5'
+                                        }}
+                                    >
+                                        Create Account
+                                    </h1>
+                                </div>
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="email">Email address</Label>
-                        <Input
-                            id="email"
-                            type="email"
-                            required
-                            tabIndex={2}
-                            autoComplete="email"
-                            value={data.email}
-                            onChange={(e) => setData('email', e.target.value)}
-                            disabled={processing}
-                            placeholder="email@example.com"
-                        />
-                        <InputError message={errors.email} />
-                    </div>
+                                {/* Test OTP Code Alert */}
+                                {testOtpCode && (
+                                    <div className="alert alert-warning alert-dismissible fade show mb-3" role="alert">
+                                        <Info className="w-4 h-4 me-2" />
+                                        <strong>For Testing:</strong> Your OTP code is <strong>{testOtpCode}</strong><br />
+                                        <small>Email sending appears to have issues. Use this code to verify your account.</small>
+                                        <button 
+                                            type="button" 
+                                            className="btn-close" 
+                                            onClick={() => setTestOtpCode('')}
+                                        />
+                                    </div>
+                                )}
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="password">Password</Label>
-                        <Input
-                            id="password"
-                            type="password"
-                            required
-                            tabIndex={3}
-                            autoComplete="new-password"
-                            value={data.password}
-                            onChange={(e) => setData('password', e.target.value)}
-                            disabled={processing}
-                            placeholder="Password"
-                        />
-                        <InputError message={errors.password} />
-                    </div>
+                                {/* Session Status */}
+                                {(status || otp_sent || otp_error) && (
+                                    <div className={`alert ${otp_error ? 'alert-warning' : status || otp_sent ? 'alert-success' : 'alert-info'} mt-3`} role="alert">
+                                        {otp_error && <AlertTriangle className="w-4 h-4 me-2" />}
+                                        {status && <CheckCircle className="w-4 h-4 me-2" />}
+                                        {otp_sent && <Info className="w-4 h-4 me-2" />}
+                                        {status || otp_sent || otp_error}
+                                    </div>
+                                )}
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="password_confirmation">Confirm password</Label>
-                        <Input
-                            id="password_confirmation"
-                            type="password"
-                            required
-                            tabIndex={4}
-                            autoComplete="new-password"
-                            value={data.password_confirmation}
-                            onChange={(e) => setData('password_confirmation', e.target.value)}
-                            disabled={processing}
-                            placeholder="Confirm password"
-                        />
-                        <InputError message={errors.password_confirmation} />
-                    </div>
+                                <form onSubmit={submit}>
+                                    {/* Name */}
+                                    <div className="mb-3">
+                                        <Label htmlFor="name" className="form-label fw-semibold text-black">
+                                            Full Name
+                                        </Label>
+                                        <Input
+                                            id="name"
+                                            type="text"
+                                            className="w-full"
+                                            style={{
+                                                borderRadius: '8px',
+                                                border: '1px solid #ddd'
+                                            }}
+                                            value={data.name}
+                                            onChange={(e) => setData('name', e.target.value)}
+                                            required
+                                            autoFocus
+                                            placeholder="Enter your full name"
+                                        />
+                                        <InputError message={errors.name} />
+                                    </div>
 
-                    <Button type="submit" className="mt-2 w-full" tabIndex={5} disabled={processing}>
-                        {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                        Create account
-                    </Button>
+                                    {/* Email Address */}
+                                    <div className="mb-3">
+                                        <Label htmlFor="email" className="form-label fw-semibold text-black">
+                                            Email Address
+                                        </Label>
+                                        <Input
+                                            id="email"
+                                            type="email"
+                                            className="w-full"
+                                            style={{
+                                                borderRadius: '8px',
+                                                border: '1px solid #ddd'
+                                            }}
+                                            value={data.email}
+                                            onChange={(e) => setData('email', e.target.value)}
+                                            required
+                                            placeholder="Enter your email"
+                                        />
+                                        <InputError message={errors.email} />
+                                    </div>
+
+                                    {/* Phone Number */}
+                                    <div className="mb-3">
+                                        <Label htmlFor="phone" className="form-label fw-semibold text-black">
+                                            Phone Number (Optional)
+                                        </Label>
+                                        <Input
+                                            id="phone"
+                                            type="tel"
+                                            className="w-full"
+                                            style={{
+                                                borderRadius: '8px',
+                                                border: '1px solid #ddd'
+                                            }}
+                                            value={data.phone || ''}
+                                            onChange={(e) => setData('phone', e.target.value)}
+                                            placeholder="Enter your phone number"
+                                        />
+                                        <InputError message={errors.phone} />
+                                    </div>
+
+                                    {/* Password */}
+                                    <div className="mb-3">
+                                        <Label htmlFor="password" className="form-label fw-semibold text-black">
+                                            Password
+                                        </Label>
+                                        <div className="relative">
+                                            <Input
+                                                id="password"
+                                                type={showPassword ? 'text' : 'password'}
+                                                className="w-full pr-12"
+                                                style={{
+                                                    borderRadius: '8px',
+                                                    border: '1px solid #ddd'
+                                                }}
+                                                value={data.password}
+                                                onChange={(e) => {
+                                                    setData('password', e.target.value);
+                                                    checkPasswordStrength(e.target.value);
+                                                }}
+                                                required
+                                                placeholder="Create a password"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-0 top-0 h-full px-3 flex items-center text-gray-500 hover:text-gray-700"
+                                                style={{
+                                                    borderRadius: '0 8px 8px 0',
+                                                    borderTop: '1px solid #ddd',
+                                                    borderRight: '1px solid #ddd',
+                                                    borderBottom: '1px solid #ddd',
+                                                    borderLeft: 'none',
+                                                    backgroundColor: '#f8f9fa'
+                                                }}
+                                            >
+                                                {showPassword ? (
+                                                    <EyeOff className="w-4 h-4" />
+                                                ) : (
+                                                    <Eye className="w-4 h-4" />
+                                                )}
+                                            </button>
+                                        </div>
+                                        <InputError message={errors.password} />
+                                        
+                                        {/* Password Strength Meter */}
+                                        <div className="mt-2">
+                                            <div className="progress mt-2" style={{ height: '12px', backgroundColor: '#e9ecef', borderRadius: '6px' }}>
+                                                <div 
+                                                    className="progress-bar" 
+                                                    role="progressbar" 
+                                                    style={{ 
+                                                        width: `${passwordStrength}%`, 
+                                                        transition: 'width 0.4s ease, background-color 0.4s ease',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: passwordStrength <= 40 ? '#dc3545' : passwordStrength <= 60 ? '#ffc107' : passwordStrength <= 80 ? '#17a2b8' : '#28a745',
+                                                        border: 'none',
+                                                        minHeight: '12px'
+                                                    }}
+                                                />
+                                            </div>
+                                            <small className={`mt-1 d-block ${passwordStrengthColor}`}>
+                                                {passwordStrengthText}
+                                            </small>
+                                            
+                                            {/* Password Requirements */}
+                                            {data.password && (
+                                                <div className="mt-2 p-3 bg-light rounded">
+                                                    <h6 className="fw-semibold mb-2 text-black">Password Requirements:</h6>
+                                                    <ul className="mb-0 ps-3 small">
+                                                        <li className={requirements.length ? 'text-success' : 'text-black'}>
+                                                            {requirements.length && '✓ '}At least 8 characters
+                                                        </li>
+                                                        <li className={requirements.lowercase ? 'text-success' : 'text-black'}>
+                                                            {requirements.lowercase && '✓ '}One lowercase letter (a-z)
+                                                        </li>
+                                                        <li className={requirements.uppercase ? 'text-success' : 'text-black'}>
+                                                            {requirements.uppercase && '✓ '}One uppercase letter (A-Z)
+                                                        </li>
+                                                        <li className={requirements.number ? 'text-success' : 'text-black'}>
+                                                            {requirements.number && '✓ '}One number (0-9)
+                                                        </li>
+                                                        <li className={requirements.special ? 'text-success' : 'text-black'}>
+                                                            {requirements.special && '✓ '}One special character (!@#$%^&*)
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Confirm Password */}
+                                    <div className="mb-4">
+                                        <Label htmlFor="password_confirmation" className="form-label fw-semibold text-black">
+                                            Confirm Password
+                                        </Label>
+                                        <div className="relative">
+                                            <Input
+                                                id="password_confirmation"
+                                                type={showConfirmPassword ? 'text' : 'password'}
+                                                className="w-full pr-12"
+                                                style={{
+                                                    borderRadius: '8px',
+                                                    border: passwordMatch === 'match' ? '1px solid #198754' : passwordMatch === 'nomatch' ? '1px solid #dc3545' : '1px solid #ddd'
+                                                }}
+                                                value={data.password_confirmation}
+                                                onChange={(e) => setData('password_confirmation', e.target.value)}
+                                                required
+                                                placeholder="Confirm your password"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                className="absolute right-0 top-0 h-full px-3 flex items-center text-gray-500 hover:text-gray-700"
+                                                style={{
+                                                    borderRadius: '0 8px 8px 0',
+                                                    borderTop: passwordMatch === 'match' ? '1px solid #198754' : passwordMatch === 'nomatch' ? '1px solid #dc3545' : '1px solid #ddd',
+                                                    borderRight: passwordMatch === 'match' ? '1px solid #198754' : passwordMatch === 'nomatch' ? '1px solid #dc3545' : '1px solid #ddd',
+                                                    borderBottom: passwordMatch === 'match' ? '1px solid #198754' : passwordMatch === 'nomatch' ? '1px solid #dc3545' : '1px solid #ddd',
+                                                    borderLeft: 'none',
+                                                    backgroundColor: '#f8f9fa'
+                                                }}
+                                            >
+                                                {showConfirmPassword ? (
+                                                    <EyeOff className="w-4 h-4" />
+                                                ) : (
+                                                    <Eye className="w-4 h-4" />
+                                                )}
+                                            </button>
+                                        </div>
+                                        <InputError message={errors.password_confirmation} />
+                                        
+                                        {/* Password Match Indicator */}
+                                        <div className="mt-2">
+                                            <div className="progress" style={{ height: '4px' }}>
+                                                <div 
+                                                    className="progress-bar" 
+                                                    role="progressbar" 
+                                                    style={{ 
+                                                        width: passwordMatch !== 'empty' ? '100%' : '0%', 
+                                                        transition: 'width 0.3s ease, background-color 0.3s ease',
+                                                        backgroundColor: passwordMatch === 'match' ? '#198754' : passwordMatch === 'nomatch' ? '#dc3545' : '#e9ecef'
+                                                    }}
+                                                />
+                                            </div>
+                                            <small className={`mt-1 d-block ${passwordMatch === 'match' ? 'text-success fw-semibold' : passwordMatch === 'nomatch' ? 'text-danger fw-semibold' : 'text-muted'}`}>
+                                                {passwordMatch === 'empty' && <><Info className="w-3 h-3 me-1" />Re-enter your password</>}
+                                                {passwordMatch === 'match' && <><CheckCircle className="w-3 h-3 me-1" />Passwords match! ✓</>}
+                                                {passwordMatch === 'nomatch' && <><X className="w-3 h-3 me-1" />Passwords do not match ✗</>}
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    {/* Register Button */}
+                                    <Button
+                                        type="submit"
+                                        className="w-full fw-semibold text-white"
+                                        style={{
+                                            backgroundColor: '#42A5F5',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            padding: '12px'
+                                        }}
+                                        disabled={processing}
+                                    >
+                                        {processing ? (
+                                            <>
+                                                <Hourglass className="w-4 h-4 mr-2 animate-spin" />
+                                                Creating Account...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <UserPlus className="w-4 h-4 mr-2" />
+                                                Create Account
+                                            </>
+                                        )}
+                                    </Button>
+                                </form>
+
+                                {/* Login Link */}
+                                <div className="text-center mt-4">
+                                    <p className="text-muted small mb-0">
+                                        Already have an account?{' '}
+                                        <a 
+                                            href={route('login')} 
+                                            className="text-decoration-none fw-semibold"
+                                            style={{ color: '#1E88E5' }}
+                                        >
+                                            Sign in
+                                        </a>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+            </div>
 
-                <div className="text-muted-foreground text-center text-sm">
-                    Already have an account?{' '}
-                    <TextLink href={route('login')} tabIndex={6}>
-                        Log in
-                    </TextLink>
+            {/* OTP Verification Modal */}
+            {showOtpModal && (
+                <div className="modal fade show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content">
+                            <div className="modal-header bg-info text-white">
+                                <h5 className="modal-title">
+                                    <Shield className="w-4 h-4 me-2" />
+                                    Verify Your Email
+                                </h5>
+                                <button 
+                                    type="button" 
+                                    className="btn-close btn-close-white" 
+                                    onClick={() => setShowOtpModal(false)}
+                                />
+                            </div>
+                            <div className="modal-body">
+                                <div className="text-center mb-4">
+                                    <div className="mb-3">
+                                        <Mail className="w-16 h-16 text-info" />
+                                    </div>
+                                    <h6 className="fw-bold mb-3">Check Your Email</h6>
+                                    <p className="text-muted mb-3">
+                                        We've sent a 6-digit verification code to your email address.
+                                    </p>
+                                    <p className="text-muted mb-4">
+                                        Please enter the code below to verify your account and complete registration.
+                                    </p>
+                                </div>
+                                
+                                <form onSubmit={handleOtpSubmit}>
+                                    <div className="mb-3">
+                                        <Label htmlFor="modalOtp" className="form-label fw-semibold text-black">
+                                            Enter OTP Code
+                                        </Label>
+                                        <Input
+                                            id="modalOtp"
+                                            type="text"
+                                            className="w-full text-center"
+                                            style={{
+                                                borderRadius: '8px',
+                                                border: '1px solid #ddd',
+                                                fontSize: '1.2rem',
+                                                letterSpacing: '2px'
+                                            }}
+                                            value={otpCode}
+                                            onChange={(e) => setOtpCode(e.target.value)}
+                                            placeholder="000000"
+                                            maxLength={6}
+                                            required
+                                        />
+                                    </div>
+
+                                    <Button
+                                        type="submit"
+                                        className="w-full fw-semibold text-white"
+                                        style={{
+                                            backgroundColor: '#28a745',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            padding: '12px'
+                                        }}
+                                    >
+                                        <Shield className="w-4 h-4 mr-2" />
+                                        Verify Email & Login
+                                    </Button>
+                                </form>
+
+                                {/* Resend OTP */}
+                                <div className="text-center mt-3">
+                                    <small className="text-muted">Didn't receive the code?</small><br />
+                                    <button
+                                        type="button"
+                                        onClick={handleResendOtp}
+                                        className="btn btn-link p-0 text-info text-decoration-none"
+                                    >
+                                        <RotateCcw className="w-3 h-3 me-1" />
+                                        Resend OTP
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="modal-footer border-0">
+                                <button 
+                                    type="button" 
+                                    className="btn btn-secondary" 
+                                    onClick={() => setShowOtpModal(false)}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </form>
-        </AuthLayout>
+            )}
+
+            {/* Registration Success Modal */}
+            {showSuccessModal && (
+                <div className="modal fade show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content">
+                            <div className="modal-header bg-success text-white">
+                                <h5 className="modal-title">
+                                    <CheckCircle className="w-4 h-4 me-2" />
+                                    Registration Successful!
+                                </h5>
+                                <button 
+                                    type="button" 
+                                    className="btn-close btn-close-white" 
+                                    onClick={() => setShowSuccessModal(false)}
+                                />
+                            </div>
+                            <div className="modal-body">
+                                <div className="text-center mb-4">
+                                    <div className="mb-3">
+                                        <Mail className="w-16 h-16 text-success" />
+                                    </div>
+                                    <h6 className="fw-bold mb-3">Please Verify Your Email</h6>
+                                    <p className="text-muted mb-2">
+                                        Thank you for registering! We've sent a verification code to your email address.
+                                    </p>
+                                    <p className="text-muted mb-3">
+                                        Please check your inbox and enter the OTP code to verify your account before logging in.
+                                    </p>
+                                    <div className="alert alert-info border-0 bg-light">
+                                        <Info className="w-4 h-4 me-2" />
+                                        <small>If you don't see the email in your inbox, please check your spam folder.</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="modal-footer border-0">
+                                <button 
+                                    type="button" 
+                                    className="btn btn-secondary" 
+                                    onClick={() => setShowSuccessModal(false)}
+                                >
+                                    I Understand
+                                </button>
+                                <a 
+                                    href={route('otp.verify')} 
+                                    className="btn btn-success"
+                                >
+                                    <Shield className="w-4 h-4 me-2" />
+                                    Verify Email Now
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }

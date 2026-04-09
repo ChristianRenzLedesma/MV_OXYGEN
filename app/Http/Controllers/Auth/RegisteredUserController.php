@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Http\Controllers\Auth\OtpController;
 
 class RegisteredUserController extends Controller
 {
@@ -28,24 +29,33 @@ class RegisteredUserController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): Response
     {
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'phone' => 'nullable|string|max:20',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'phone' => $request->phone,
             'password' => Hash::make($request->password),
         ]);
 
         event(new Registered($user));
 
-        Auth::login($user);
+        // Send OTP for email verification
+        $otpController = new OtpController();
+        $otpRequest = new Request(['user_id' => $user->user_id]);
+        $otpResponse = $otpController->send($otpRequest);
 
-        return to_route('dashboard');
+        return Inertia::render('auth/email-verification-otp', [
+            'otp_sent' => 'Please check your email for verification code.',
+            'otp_code' => $otpResponse->getData(true)['otp_code'] ?? null,
+            'user_id' => $user->user_id
+        ]);
     }
 }

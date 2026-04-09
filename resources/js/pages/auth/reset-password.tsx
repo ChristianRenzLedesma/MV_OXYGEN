@@ -18,6 +18,7 @@ interface ResetPasswordForm {
     email: string;
     password: string;
     password_confirmation: string;
+    [key: string]: string | number | boolean | Blob | File | null | undefined;
 }
 
 export default function ResetPassword({ token, email }: ResetPasswordProps) {
