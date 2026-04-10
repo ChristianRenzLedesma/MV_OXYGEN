@@ -20,28 +20,33 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Rentals',
-        url: '/rentals',
+        url: '#',
         icon: Package,
+        disabled: true,
     },
     {
         title: 'Refills',
-        url: '/refills',
+        url: '#',
         icon: RefreshCw,
+        disabled: true,
     },
     {
         title: 'Inventory',
-        url: '/inventory',
+        url: '#',
         icon: FileText,
+        disabled: true,
     },
     {
         title: 'Reports',
-        url: '/reports',
+        url: '#',
         icon: BarChart3,
+        disabled: true,
     },
     {
         title: 'Settings',
-        url: '/settings',
+        url: '#',
         icon: Settings,
+        disabled: true,
     }
 ];
 

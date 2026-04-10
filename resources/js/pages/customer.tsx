@@ -11,6 +11,8 @@ import { useState, useEffect } from 'react';
 import AddCustomerDialog from '@/components/add-customer-dialog';
 import EditCustomerDialog from '@/components/edit-customer-dialog';
 import DeleteCustomerDialog from '@/components/delete-customer-dialog';
+import { Breadcrumbs } from '@/components/breadcrumbs';
+import { type BreadcrumbItem } from '@/types';
 
 interface Transaction {
     id: number;
@@ -22,8 +24,18 @@ interface Transaction {
     created_at: string;
 }
 
-interface Customer {
+interface TankDue {
+    id: number;
     customer_id: number;
+    customer_name: string;
+    tank_id: string;
+    days_overdue: number;
+    rental_date: string;
+    created_at: string;
+}
+
+interface Customer {
+    id: number;
     name: string;
     contact_number: string;
     address: string;
@@ -37,10 +49,17 @@ interface Customer {
 interface CustomerPageProps {
     customers: Customer[];
     recent_transactions?: Transaction[];
+    tanks_due_for_return?: TankDue[];
     success?: string;
+    breadcrumbs?: BreadcrumbItem[];
 }
 
-export default function Customer({ customers: initialCustomers = [], recent_transactions: recentTransactions = [], success }: CustomerPageProps) {
+export default function Customer({ customers: initialCustomers = [], recent_transactions: recentTransactions = [], tanks_due_for_return: tanksDueForReturn = [], breadcrumbs = [], success }: CustomerPageProps) {
+    console.log('Customer component - initialCustomers:', initialCustomers);
+    console.log('Customer component - recentTransactions:', recentTransactions);
+    console.log('Customer component - tanksDueForReturn:', tanksDueForReturn);
+    console.log('Customer component - success:', success);
+    
     const [searchTerm, setSearchTerm] = useState('');
     const [showSuccess, setShowSuccess] = useState(false);
 
@@ -68,29 +87,16 @@ export default function Customer({ customers: initialCustomers = [], recent_tran
     const activeCustomers = customers.filter(c => c.status === 'active').length;
     const inactiveCustomers = customers.filter(c => c.status === 'inactive').length;
 
-    // Add loading state check
-    if (!customers || customers.length === 0) {
-        return (
-            <AppLayout>
-                <Head title="Customer Management" />
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                    <div className="text-center py-12">
-                        <h1 className="text-3xl font-bold tracking-tight mb-4">Customer Management</h1>
-                        <p className="text-muted-foreground mb-4">No customers found. Click 'Add Customer' to get started.</p>
-                        <div className="mt-6">
-                            <AddCustomerDialog onSuccess={() => router.visit('/customer')} />
-                        </div>
-                    </div>
-                </div>
-            </AppLayout>
-        );
-    }
-
+    
     return (
         <AppLayout>
             <Head title="Customer Management" />
             
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+                {/* Breadcrumbs */}
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <Breadcrumbs breadcrumbs={breadcrumbs} />
+                </div>
                 {/* Success Alert */}
                 {showSuccess && success && (
                     <Alert className="bg-green-50 border-green-200 text-green-800">
@@ -198,11 +204,11 @@ export default function Customer({ customers: initialCustomers = [], recent_tran
                                 </TableHeader>
                                 <TableBody>
                                     {filteredCustomers.map((customer) => (
-                                        <TableRow key={customer.customer_id} className="hover:bg-muted/50">
+                                        <TableRow key={customer.id} className="hover:bg-muted/50">
                                             <TableCell>
                                                 <div>
                                                     <div className="font-medium">{customer.name}</div>
-                                                    <div className="text-sm text-muted-foreground">ID: #{customer.customer_id.toString().padStart(4, '0')}</div>
+                                                    <div className="text-sm text-muted-foreground">ID: #{customer.id.toString().padStart(4, '0')}</div>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
@@ -238,7 +244,7 @@ export default function Customer({ customers: initialCustomers = [], recent_tran
                                                     <Button 
                                                         variant="ghost" 
                                                         size="sm"
-                                                        onClick={() => router.visit(`/customer/${customer.customer_id}`)}
+                                                        onClick={() => router.visit(`/customer/${customer.id}`)}
                                                     >
                                                         <Eye className="h-4 w-4" />
                                                     </Button>
@@ -268,55 +274,124 @@ export default function Customer({ customers: initialCustomers = [], recent_tran
                     </CardContent>
                 </Card>
 
-                {/* Recent Transactions */}
-                {recentTransactions && recentTransactions.length > 0 && (
-                    <Card className="mt-6">
+                <div className="grid gap-6 lg:grid-cols-2 mt-6">
+                    {/* Recent Transactions */}
+                    {recentTransactions && recentTransactions.length > 0 && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Recent Transactions</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="rounded-md border">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Customer</TableHead>
+                                                <TableHead>Tank ID</TableHead>
+                                                <TableHead>Type</TableHead>
+                                                <TableHead>Date</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {recentTransactions.slice(0, 5).map((transaction) => (
+                                                <TableRow key={transaction.id}>
+                                                    <TableCell className="font-medium">{transaction.customer_name}</TableCell>
+                                                    <TableCell>{transaction.tank_id}</TableCell>
+                                                    <TableCell>
+                                                        <Badge 
+                                                            variant={
+                                                                transaction.transaction_type === 'Rent' ? 'default' :
+                                                                transaction.transaction_type === 'Returned' ? 'secondary' :
+                                                                'outline'
+                                                            }
+                                                            className={
+                                                                transaction.transaction_type === 'Rent' ? 'bg-blue-100 text-blue-800' :
+                                                                transaction.transaction_type === 'Returned' ? 'bg-gray-100 text-gray-800' :
+                                                                'bg-green-100 text-green-800'
+                                                            }
+                                                        >
+                                                            {transaction.transaction_type}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {new Date(transaction.transaction_date).toLocaleDateString()}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Tanks Due for Return */}
+                    <Card>
                         <CardHeader>
-                            <CardTitle>Recent Transactions</CardTitle>
+                            <CardTitle className="flex items-center gap-2">
+                                <span>Tanks Due for Return</span>
+                                {tanksDueForReturn && tanksDueForReturn.length > 0 && (
+                                    <Badge variant="destructive" className="text-xs">
+                                        {tanksDueForReturn.length}
+                                    </Badge>
+                                )}
+                            </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="rounded-md border">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Customer</TableHead>
-                                            <TableHead>Tank ID</TableHead>
-                                            <TableHead>Transaction Type</TableHead>
-                                            <TableHead>Date</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {recentTransactions.map((transaction) => (
-                                            <TableRow key={transaction.id}>
-                                                <TableCell className="font-medium">{transaction.customer_name}</TableCell>
-                                                <TableCell>{transaction.tank_id}</TableCell>
-                                                <TableCell>
-                                                    <Badge 
-                                                        variant={
-                                                            transaction.transaction_type === 'Rent' ? 'default' :
-                                                            transaction.transaction_type === 'Returned' ? 'secondary' :
-                                                            'outline'
-                                                        }
-                                                        className={
-                                                            transaction.transaction_type === 'Rent' ? 'bg-blue-100 text-blue-800' :
-                                                            transaction.transaction_type === 'Returned' ? 'bg-gray-100 text-gray-800' :
-                                                            'bg-green-100 text-green-800'
-                                                        }
-                                                    >
-                                                        {transaction.transaction_type}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {new Date(transaction.transaction_date).toLocaleDateString()}
-                                                </TableCell>
+                            {tanksDueForReturn && tanksDueForReturn.length > 0 ? (
+                                <div className="rounded-md border">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Customer</TableHead>
+                                                <TableHead>Tank ID</TableHead>
+                                                <TableHead>Days Overdue</TableHead>
+                                                <TableHead>Action</TableHead>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {tanksDueForReturn.slice(0, 5).map((tank) => (
+                                                <TableRow key={tank.id}>
+                                                    <TableCell className="font-medium">{tank.customer_name}</TableCell>
+                                                    <TableCell>{tank.tank_id}</TableCell>
+                                                    <TableCell>
+                                                        <Badge 
+                                                            variant={tank.days_overdue > 14 ? 'destructive' : 'secondary'}
+                                                            className={
+                                                                tank.days_overdue > 14 ? 'bg-red-100 text-red-800' :
+                                                                'bg-yellow-100 text-yellow-800'
+                                                            }
+                                                        >
+                                                            {tank.days_overdue} days
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Button 
+                                                            size="sm" 
+                                                            variant="outline"
+                                                            onClick={() => router.visit(`/customer/${tank.customer_id}`)}
+                                                        >
+                                                            View
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            ) : (
+                                <div className="text-center py-8 text-muted-foreground">
+                                    <div className="text-sm">
+                                        No tanks due for return
+                                    </div>
+                                    <div className="text-xs mt-1">
+                                        All tanks are currently returned or within rental period
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
-                )}
+                </div>
             </div>
         </AppLayout>
     );

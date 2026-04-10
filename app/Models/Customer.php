@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Customer extends Model
 {
-    protected $primaryKey = 'customer_id';
+    protected $primaryKey = 'id';
     
     protected $fillable = [
         'name',
@@ -18,11 +18,11 @@ class Customer extends Model
 
     protected $casts = [
         'total_rentals' => 'integer',
-        'customer_id' => 'integer',
+        'id' => 'integer',
     ];
 
     public function transactions()
     {
-        return $this->hasMany(Transaction::class, 'customer_id', 'customer_id');
+        return $this->hasMany(Transaction::class, 'customer_id', 'id');
     }
 }

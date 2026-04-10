@@ -2,19 +2,17 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { Users, Package, DollarSign, TrendingUp, ShoppingCart, AlertCircle, CheckCircle } from 'lucide-react';
+import { Breadcrumbs } from '@/components/breadcrumbs';
 
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Dashboard',
-        href: '/dashboard',
-    },
-];
-
-export default function Dashboard() {
+export default function Dashboard({ breadcrumbs = [{ title: 'Dashboard', href: '/dashboard' }] }: { breadcrumbs?: BreadcrumbItem[] }) {
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
+        <AppLayout>
             <Head title="Admin Dashboard" />
             <div className="min-h-screen bg-gray-50 p-6" style={{ marginLeft: '2rem' }}>
+                {/* Breadcrumbs */}
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-6">
+                    <Breadcrumbs breadcrumbs={breadcrumbs} />
+                </div>
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-800 mb-2">Admin Dashboard</h1>

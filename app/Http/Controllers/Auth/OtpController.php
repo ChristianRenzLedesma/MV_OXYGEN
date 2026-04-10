@@ -21,7 +21,7 @@ class OtpController extends Controller
     public function send(Request $request)
     {
         $request->validate([
-            'user_id' => 'required|exists:users,user_id'
+            'user_id' => 'required|exists:users,id'
         ]);
 
         $user = User::findOrFail($request->user_id);
@@ -30,7 +30,7 @@ class OtpController extends Controller
         $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         
         // Store OTP in cache for 10 minutes
-        Cache::put("otp_{$user->user_id}", $otp, 600);
+        Cache::put("otp_{$user->id}", $otp, 600);
         
         // Send OTP email
         try {
@@ -55,18 +55,18 @@ class OtpController extends Controller
     {
         $request->validate([
             'otp' => 'required|string|size:6',
-            'user_id' => 'required|exists:users,user_id'
+            'user_id' => 'required|exists:users,id'
         ]);
 
         $user = User::findOrFail($request->user_id);
-        $cachedOtp = Cache::get("otp_{$user->user_id}");
+        $cachedOtp = Cache::get("otp_{$user->id}");
 
         if (!$cachedOtp || $cachedOtp !== $request->otp) {
             return back()->withErrors(['otp' => 'Invalid or expired OTP code']);
         }
 
         // Clear OTP from cache
-        Cache::forget("otp_{$user->user_id}");
+        Cache::forget("otp_{$user->id}");
 
         // Mark user as verified and login
         $user->email_verified_at = now();

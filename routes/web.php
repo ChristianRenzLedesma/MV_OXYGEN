@@ -10,7 +10,11 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'otp.verified'])->group(function () {
     Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
+        return Inertia::render('dashboard', [
+            'breadcrumbs' => [
+                ['title' => 'Dashboard', 'href' => '/dashboard']
+            ]
+        ]);
     })->name('dashboard');
     
     Route::get('customer', [CustomerController::class, 'index'])->name('customer');

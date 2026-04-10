@@ -49,13 +49,13 @@ class RegisteredUserController extends Controller
 
         // Send OTP for email verification
         $otpController = new OtpController();
-        $otpRequest = new Request(['user_id' => $user->user_id]);
+        $otpRequest = new Request(['user_id' => $user->id]);
         $otpResponse = $otpController->send($otpRequest);
 
         return Inertia::render('auth/email-verification-otp', [
             'otp_sent' => 'Please check your email for verification code.',
             'otp_code' => $otpResponse->getData(true)['otp_code'] ?? null,
-            'user_id' => $user->user_id
+            'user_id' => $user->id
         ]);
     }
 }

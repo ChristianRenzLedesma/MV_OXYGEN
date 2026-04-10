@@ -24,7 +24,7 @@ class EnsureOtpVerified
             return redirect()->route('email.verification.otp')
                 ->with('status', 'Please verify your email before accessing the dashboard.')
                 ->with('otp_error', 'Email verification required. Please check your email for the OTP code.')
-                ->with('user_id', $user->user_id);
+                ->with('user_id', $user->id);
         }
 
         return $next($request);

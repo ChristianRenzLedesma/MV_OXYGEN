@@ -4,10 +4,52 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Customer;
+use App\Models\Transaction;
 use Inertia\Inertia;
+use Carbon\Carbon;
 
 class CustomerController extends Controller
 {
+    /**
+     * Get tanks due for return (rented more than 7 days ago without return transaction)
+     */
+    private function getTanksDueForReturn()
+    {
+        $sevenDaysAgo = Carbon::now()->subDays(7);
+        
+        // Get all 'Rent' transactions from the last 30 days that are older than 7 days
+        $rentTransactions = Transaction::with('customer')
+            ->where('transaction_type', 'Rent')
+            ->where('transaction_date', '>=', Carbon::now()->subDays(30))
+            ->where('transaction_date', '<=', $sevenDaysAgo)
+            ->orderBy('transaction_date', 'asc')
+            ->get();
+        
+        $tanksDue = [];
+        foreach ($rentTransactions as $transaction) {
+            // Check if there's a corresponding 'Returned' transaction for this tank and customer
+            $hasReturn = Transaction::where('customer_id', $transaction->customer_id)
+                ->where('tank_id', $transaction->tank_id)
+                ->where('transaction_type', 'Returned')
+                ->where('transaction_date', '>=', $transaction->transaction_date)
+                ->exists();
+            
+            if (!$hasReturn) {
+                $tanksDue[] = [
+                    'id' => $transaction->id,
+                    'customer_id' => $transaction->customer_id,
+                    'customer_name' => $transaction->customer->name,
+                    'tank_id' => $transaction->tank_id,
+                    'days_overdue' => Carbon::parse($transaction->transaction_date)->diffInDays(Carbon::now()),
+                    'rental_date' => $transaction->transaction_date,
+                    'created_at' => $transaction->created_at,
+                ];
+            }
+        }
+        
+        return $tanksDue;
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -26,7 +68,7 @@ class CustomerController extends Controller
             foreach ($recentTransactions as $transaction) {
                 $allRecentTransactions[] = [
                     'id' => $transaction->id,
-                    'customer_id' => $customer->customer_id,
+                    'customer_id' => $customer->id,
                     'customer_name' => $customer->name,
                     'tank_id' => $transaction->tank_id,
                     'transaction_type' => $transaction->transaction_type,
@@ -41,9 +83,17 @@ class CustomerController extends Controller
             return strcmp($b['transaction_date'], $a['transaction_date']);
         });
         
+        // Get tanks due for return
+        $tanksDueForReturn = $this->getTanksDueForReturn();
+        
         return Inertia::render('customer', [
             'customers' => $customers,
-            'recent_transactions' => $allRecentTransactions
+            'recent_transactions' => $allRecentTransactions,
+            'tanks_due_for_return' => $tanksDueForReturn,
+            'breadcrumbs' => [
+                ['title' => 'Dashboard', 'href' => '/dashboard'],
+                ['title' => 'Customer Management', 'href' => '/customer']
+            ]
         ]);
     }
 
@@ -89,7 +139,7 @@ class CustomerController extends Controller
                 foreach ($recentTransactions as $transaction) {
                     $allRecentTransactions[] = [
                         'id' => $transaction->id,
-                        'customer_id' => $customer->customer_id,
+                        'customer_id' => $customer->id,
                         'customer_name' => $customer->name,
                         'tank_id' => $transaction->tank_id,
                         'transaction_type' => $transaction->transaction_type,
@@ -107,7 +157,11 @@ class CustomerController extends Controller
             return Inertia::render('customer', [
                 'customers' => $customers,
                 'recent_transactions' => $allRecentTransactions,
-                'success' => 'Customer successfully added!'
+                'success' => 'Customer successfully added!',
+                'breadcrumbs' => [
+                    ['title' => 'Dashboard', 'href' => '/dashboard'],
+                    ['title' => 'Customer Management', 'href' => '/customer']
+                ]
             ]);
         } catch (\Exception $e) {
             return redirect()->back()
@@ -174,7 +228,11 @@ class CustomerController extends Controller
             
             return Inertia::render('customer', [
                 'customers' => $customers,
-                'success' => 'Customer successfully updated!'
+                'success' => 'Customer successfully updated!',
+                'breadcrumbs' => [
+                    ['title' => 'Dashboard', 'href' => '/dashboard'],
+                    ['title' => 'Customer Management', 'href' => '/customer']
+                ]
             ]);
         } catch (\Exception $e) {
             return redirect()->back()
@@ -204,7 +262,11 @@ class CustomerController extends Controller
             
             return Inertia::render('customer', [
                 'customers' => $customers,
-                'success' => 'Customer successfully deleted!'
+                'success' => 'Customer successfully deleted!',
+                'breadcrumbs' => [
+                    ['title' => 'Dashboard', 'href' => '/dashboard'],
+                    ['title' => 'Customer Management', 'href' => '/customer']
+                ]
             ]);
         } catch (\Exception $e) {
             return redirect()->back()
