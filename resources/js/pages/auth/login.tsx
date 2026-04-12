@@ -49,10 +49,10 @@ export default function Login({ status, canResetPassword, error }: LoginProps) {
             <Head title="Log in" />
             
             <div className="w-full max-w-6xl px-4">
-                <div className="bg-white rounded-2xl shadow-xl overflow-hidden" style={{ minHeight: '600px' }}>
+                <div className="bg-white rounded-2xl shadow-xl overflow-hidden animate-fadeInUp" style={{ minHeight: '600px' }}>
                     <div className="flex flex-col lg:flex-row">
                         {/* Left Image Column */}
-                        <div className="lg:w-1/2 relative hidden lg:block">
+                        <div className="lg:w-1/2 relative hidden lg:block animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
                             <img 
                                 src="/images/hero-image.png" 
                                 alt="Oxygen Tanks" 
@@ -69,9 +69,9 @@ export default function Login({ status, canResetPassword, error }: LoginProps) {
                         
                         {/* Right Form Column */}
                         <div className="lg:w-1/2 flex items-center justify-center p-4 md:p-8 bg-white">
-                            <div className="w-full" style={{ maxWidth: '350px' }}>
+                            <div className="w-full animate-fadeInUp" style={{ maxWidth: '350px', animationDelay: '0.4s' }}>
                                 {/* Back to Home */}
-                                <div className="mb-3">
+                                <div className="mb-3 animate-fadeInUp" style={{ animationDelay: '0.5s' }}>
                                     <a 
                                         href="/" 
                                         className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors"
@@ -82,7 +82,7 @@ export default function Login({ status, canResetPassword, error }: LoginProps) {
                                 </div>
                                 
                                 {/* Welcome Title */}
-                                <div className="mb-4">
+                                <div className="mb-4 animate-fadeInUp" style={{ animationDelay: '0.6s' }}>
                                     <h1 
                                         className="font-bold mb-1 italic"
                                         style={{ 
@@ -96,7 +96,7 @@ export default function Login({ status, canResetPassword, error }: LoginProps) {
 
                                 {/* Session Status */}
                                 {status && (
-                                    <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center gap-2">
+                                    <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center gap-2 animate-fadeIn">
                                         <AlertCircle className="w-5 h-5" />
                                         {status}
                                     </div>
@@ -104,7 +104,7 @@ export default function Login({ status, canResetPassword, error }: LoginProps) {
 
                                 {/* Error Message */}
                                 {error && (
-                                    <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center gap-2">
+                                    <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center gap-2 animate-fadeIn">
                                         <XCircle className="w-5 h-5" />
                                         {error}
                                     </div>
@@ -112,13 +112,13 @@ export default function Login({ status, canResetPassword, error }: LoginProps) {
 
                                 {/* Form General Errors */}
                                 {errors.email && errors.password && (
-                                    <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center gap-2">
+                                    <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center gap-2 animate-fadeIn">
                                         <XCircle className="w-5 h-5" />
                                         Invalid email or password. Please try again.
                                     </div>
                                 )}
 
-                                <form onSubmit={submit}>
+                                <form onSubmit={submit} className="animate-fadeInUp" style={{ animationDelay: '0.7s' }}>
                                     {/* Email Address */}
                                     <div className="mb-3">
                                         <Label htmlFor="email" className="form-label font-semibold text-black">
@@ -127,7 +127,7 @@ export default function Login({ status, canResetPassword, error }: LoginProps) {
                                         <Input
                                             id="email"
                                             type="email"
-                                            className="w-full"
+                                            className="w-full transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             style={{
                                                 borderRadius: '8px',
                                                 border: '1px solid #ddd'
@@ -150,7 +150,7 @@ export default function Login({ status, canResetPassword, error }: LoginProps) {
                                             <Input
                                                 id="password"
                                                 type={showPassword ? 'text' : 'password'}
-                                                className="w-full pr-12"
+                                                className="w-full pr-12 transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                 style={{
                                                     borderRadius: '8px',
                                                     border: '1px solid #ddd'
@@ -163,7 +163,7 @@ export default function Login({ status, canResetPassword, error }: LoginProps) {
                                             <button
                                                 type="button"
                                                 onClick={togglePassword}
-                                                className="absolute right-0 top-0 h-full px-3 flex items-center text-gray-500 hover:text-gray-700"
+                                                className="absolute right-0 top-0 h-full px-3 flex items-center text-gray-500 hover:text-gray-700 transition-colors"
                                                 style={{
                                                     borderRadius: '0 8px 8px 0',
                                                     border: '1px solid #ddd',
@@ -210,7 +210,7 @@ export default function Login({ status, canResetPassword, error }: LoginProps) {
                                     {/* Login Button */}
                                     <Button
                                         type="submit"
-                                        className="w-full font-semibold text-white"
+                                        className="w-full font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-lg"
                                         style={{
                                             backgroundColor: '#42A5F5',
                                             border: 'none',
@@ -225,7 +225,7 @@ export default function Login({ status, canResetPassword, error }: LoginProps) {
                                     
                                     <a 
                                         href={route('register')} 
-                                        className="text-sm text-blue-600 hover:text-blue-700 text-center block mt-3"
+                                        className="text-sm text-blue-600 hover:text-blue-700 text-center block mt-3 transition-colors"
                                     >
                                         Don't have an account? Register
                                     </a>

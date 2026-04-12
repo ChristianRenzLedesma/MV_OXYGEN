@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -29,6 +30,7 @@ class User extends Authenticatable
         'email',
         'password',
         'phone',
+        'role',
     ];
 
     /**
@@ -52,5 +54,66 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Check if user is an admin
+     */
+    public function isAdmin(): bool
+    {
+        // Check if user has admin role
+        if (isset($this->role) && $this->role === 'admin') {
+            return true;
+        }
+        
+        // You can modify this logic based on your admin determination
+        // For now, let's assume admins have email addresses with specific domains or specific emails
+        $adminEmails = [
+            'admin@example.com',
+            'admin@mvoxygen.com',
+            'superadmin@mvoxygen.com',
+            // Add more admin emails as needed
+        ];
+        
+        return in_array($this->email, $adminEmails) || 
+               str_ends_with($this->email, '@admin.mvoxygen.com');
+    }
+
+    /**
+     * Get the notifications for the user.
+     */
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class)->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * Get the unread notifications for the user.
+     */
+    public function unreadNotifications(): HasMany
+    {
+        return $this->hasMany(Notification::class)->where('read', false)->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * Get the count of unread notifications.
+     */
+    public function getUnreadNotificationsCount(): int
+    {
+        return $this->unreadNotifications()->count();
+    }
+
+    /**
+     * Get appropriate dashboard route for the user
+     */
+    public function getDashboardRoute(): string
+    {
+        // Admin users go to admin dashboard
+        if ($this->isAdmin()) {
+            return 'dashboard';
+        }
+        
+        // Customer users go to user dashboard
+        return 'user.dashboard';
     }
 }

@@ -3,53 +3,11 @@ import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Package, ShoppingCart, Users, BarChart3, Settings, FileText, RefreshCw, Home, PlusCircle, History } from 'lucide-react';
+import { Link } from '@inertiajs/react';
+import { BookOpen, Package, ShoppingCart, User, Settings, Home, PlusCircle, History } from 'lucide-react';
 import AppLogo from './app-logo';
 
-const adminNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        url: '/dashboard',
-        icon: LayoutGrid,
-    },
-    {
-        title: 'Customer',
-        url: '/customer',
-        icon: Users,
-    },
-    {
-        title: 'Rentals',
-        url: '/rentals',
-        icon: Package,
-    },
-    {
-        title: 'Refills',
-        url: '#',
-        icon: RefreshCw,
-        disabled: true,
-    },
-    {
-        title: 'Inventory',
-        url: '#',
-        icon: FileText,
-        disabled: true,
-    },
-    {
-        title: 'Reports',
-        url: '#',
-        icon: BarChart3,
-        disabled: true,
-    },
-    {
-        title: 'Settings',
-        url: '#',
-        icon: Settings,
-        disabled: true,
-    }
-];
-
-const userNavItems: NavItem[] = [
+const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         url: '/user/dashboard',
@@ -69,13 +27,11 @@ const userNavItems: NavItem[] = [
         title: 'History',
         url: '/user/history',
         icon: History,
-        disabled: true,
     },
     {
         title: 'Settings',
         url: '/user/settings',
         icon: Settings,
-        disabled: true,
     }
 ];
 
@@ -83,21 +39,14 @@ const footerNavItems: NavItem[] = [
     // Repository and documentation items removed
 ];
 
-export function AppSidebar() {
-    const { url } = usePage().props;
-    const isUserPage = typeof url === 'string' && url.includes('/user');
-    
-    // Choose navigation items based on current page
-    const navItems = isUserPage ? userNavItems : adminNavItems;
-    const logoHref = isUserPage ? '/user/dashboard' : '/dashboard';
-
+export function UserSidebar() {
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={logoHref} prefetch>
+                            <Link href="/user/dashboard" prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -106,7 +55,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={navItems} />
+                <NavMain items={mainNavItems} />
             </SidebarContent>
 
             <SidebarFooter>

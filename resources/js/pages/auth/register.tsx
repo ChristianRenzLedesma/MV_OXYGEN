@@ -160,10 +160,10 @@ export default function Register({ status, otp_sent, otp_error, user_id, otp_cod
             <Head title="Register" />
             
             <div className="w-full max-w-6xl px-4">
-                <div className="bg-white rounded-2xl shadow-xl overflow-hidden" style={{ minHeight: '500px' }}>
+                <div className="bg-white rounded-2xl shadow-xl overflow-hidden animate-fadeInUp" style={{ minHeight: '500px' }}>
                     <div className="flex flex-col lg:flex-row">
                         {/* Left Image Column */}
-                        <div className="lg:w-1/2 relative hidden lg:block">
+                        <div className="lg:w-1/2 relative hidden lg:block animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
                             <img 
                                 src="/images/hero-image.png" 
                                 alt="Oxygen Tanks" 
@@ -180,12 +180,12 @@ export default function Register({ status, otp_sent, otp_error, user_id, otp_cod
                         
                         {/* Right Form Column */}
                         <div className="lg:w-1/2 flex items-center justify-center p-3 md:p-4 bg-white">
-                            <div className="w-full" style={{ maxWidth: '350px' }}>
+                            <div className="w-full animate-fadeInUp" style={{ maxWidth: '350px', animationDelay: '0.4s' }}>
                                 {/* Back to Home */}
-                                <div className="mb-3">
+                                <div className="mb-3 animate-fadeInUp" style={{ animationDelay: '0.5s' }}>
                                     <a 
                                         href="/" 
-                                        className="flex items-center gap-2 text-decoration-none"
+                                        className="flex items-center gap-2 text-decoration-none transition-colors"
                                         style={{ color: '#1E88E5' }}
                                     >
                                         <ArrowLeft className="w-4 h-4" />
@@ -194,7 +194,7 @@ export default function Register({ status, otp_sent, otp_error, user_id, otp_cod
                                 </div>
                                 
                                 {/* Welcome Title */}
-                                <div className="mb-4">
+                                <div className="mb-4 animate-fadeInUp" style={{ animationDelay: '0.6s' }}>
                                     <h1 
                                         className="fw-bold mb-1 italic"
                                         style={{ 
@@ -208,7 +208,7 @@ export default function Register({ status, otp_sent, otp_error, user_id, otp_cod
 
                                 {/* Test OTP Code Alert */}
                                 {testOtpCode && (
-                                    <div className="alert alert-warning alert-dismissible fade show mb-3" role="alert">
+                                    <div className="alert alert-warning alert-dismissible fade show mb-3 animate-fadeIn" role="alert">
                                         <Info className="w-4 h-4 me-2" />
                                         <strong>For Testing:</strong> Your OTP code is <strong>{testOtpCode}</strong><br />
                                         <small>Email sending appears to have issues. Use this code to verify your account.</small>
@@ -222,7 +222,7 @@ export default function Register({ status, otp_sent, otp_error, user_id, otp_cod
 
                                 {/* Session Status */}
                                 {(status || otp_sent || otp_error) && (
-                                    <div className={`alert ${otp_error ? 'alert-warning' : status || otp_sent ? 'alert-success' : 'alert-info'} mt-3`} role="alert">
+                                    <div className={`alert ${otp_error ? 'alert-warning' : status || otp_sent ? 'alert-success' : 'alert-info'} mt-3 animate-fadeIn`} role="alert">
                                         {otp_error && <AlertTriangle className="w-4 h-4 me-2" />}
                                         {status && <CheckCircle className="w-4 h-4 me-2" />}
                                         {otp_sent && <Info className="w-4 h-4 me-2" />}
@@ -230,7 +230,7 @@ export default function Register({ status, otp_sent, otp_error, user_id, otp_cod
                                     </div>
                                 )}
 
-                                <form onSubmit={submit}>
+                                <form onSubmit={submit} className="animate-fadeInUp" style={{ animationDelay: '0.7s' }}>
                                     {/* Name */}
                                     <div className="mb-3">
                                         <Label htmlFor="name" className="form-label fw-semibold text-black">
@@ -239,7 +239,7 @@ export default function Register({ status, otp_sent, otp_error, user_id, otp_cod
                                         <Input
                                             id="name"
                                             type="text"
-                                            className="w-full"
+                                            className="w-full transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             style={{
                                                 borderRadius: '8px',
                                                 border: '1px solid #ddd'
@@ -261,7 +261,7 @@ export default function Register({ status, otp_sent, otp_error, user_id, otp_cod
                                         <Input
                                             id="email"
                                             type="email"
-                                            className="w-full"
+                                            className="w-full transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             style={{
                                                 borderRadius: '8px',
                                                 border: '1px solid #ddd'
@@ -282,7 +282,7 @@ export default function Register({ status, otp_sent, otp_error, user_id, otp_cod
                                         <Input
                                             id="phone"
                                             type="tel"
-                                            className="w-full"
+                                            className="w-full transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             style={{
                                                 borderRadius: '8px',
                                                 border: '1px solid #ddd'
@@ -449,7 +449,7 @@ export default function Register({ status, otp_sent, otp_error, user_id, otp_cod
                                     {/* Register Button */}
                                     <Button
                                         type="submit"
-                                        className="w-full fw-semibold text-white"
+                                        className="w-full fw-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-lg"
                                         style={{
                                             backgroundColor: '#42A5F5',
                                             border: 'none',
@@ -473,12 +473,12 @@ export default function Register({ status, otp_sent, otp_error, user_id, otp_cod
                                 </form>
 
                                 {/* Login Link */}
-                                <div className="text-center mt-4">
+                                <div className="text-center mt-4 animate-fadeInUp" style={{ animationDelay: '0.8s' }}>
                                     <p className="text-muted small mb-0">
                                         Already have an account?{' '}
                                         <a 
                                             href={route('login')} 
-                                            className="text-decoration-none fw-semibold"
+                                            className="text-decoration-none fw-semibold transition-colors"
                                             style={{ color: '#1E88E5' }}
                                         >
                                             Sign in

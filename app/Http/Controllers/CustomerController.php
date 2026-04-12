@@ -84,15 +84,26 @@ class CustomerController extends Controller
         });
         
         // Get tanks due for return
-        $tanksDueForReturn = $this->getTanksDueForReturn();
+        $tanksDueForReturn = \App\Models\RentalRequest::getTanksDueForReturn(30);
+        $overdueTanks = \App\Models\RentalRequest::getOverdueTanks();
+        
+        // Debug logging
+        \Log::info('Tanks due for return count: ' . $tanksDueForReturn->count());
+        \Log::info('Tanks due for return data: ', $tanksDueForReturn->toArray());
+        \Log::info('Overdue tanks count: ' . $overdueTanks->count());
+        \Log::info('Overdue tanks data: ', $overdueTanks->toArray());
         
         return Inertia::render('customer', [
             'customers' => $customers,
             'recent_transactions' => $allRecentTransactions,
             'tanks_due_for_return' => $tanksDueForReturn,
+            'overdue_tanks' => $overdueTanks,
             'breadcrumbs' => [
                 ['title' => 'Dashboard', 'href' => '/dashboard'],
                 ['title' => 'Customer Management', 'href' => '/customer']
+            ],
+            'auth' => [
+                'user' => auth()->user()
             ]
         ]);
     }
@@ -161,6 +172,9 @@ class CustomerController extends Controller
                 'breadcrumbs' => [
                     ['title' => 'Dashboard', 'href' => '/dashboard'],
                     ['title' => 'Customer Management', 'href' => '/customer']
+                ],
+                'auth' => [
+                    'user' => auth()->user()
                 ]
             ]);
         } catch (\Exception $e) {
@@ -178,7 +192,10 @@ class CustomerController extends Controller
         $customer = Customer::with('transactions')->findOrFail($id);
         
         return Inertia::render('customer-show', [
-            'customer' => $customer
+            'customer' => $customer,
+            'auth' => [
+                'user' => auth()->user()
+            ]
         ]);
     }
 
@@ -231,7 +248,11 @@ class CustomerController extends Controller
                 'success' => 'Customer successfully updated!',
                 'breadcrumbs' => [
                     ['title' => 'Dashboard', 'href' => '/dashboard'],
-                    ['title' => 'Customer Management', 'href' => '/customer']
+                    ['title' => 'Customer Management', 'href' => '/customer'],
+                    ['title' => 'Edit Customer', 'href' => "/customer/{$id}/edit"]
+                ],
+                'auth' => [
+                    'user' => auth()->user()
                 ]
             ]);
         } catch (\Exception $e) {
@@ -266,6 +287,9 @@ class CustomerController extends Controller
                 'breadcrumbs' => [
                     ['title' => 'Dashboard', 'href' => '/dashboard'],
                     ['title' => 'Customer Management', 'href' => '/customer']
+                ],
+                'auth' => [
+                    'user' => auth()->user()
                 ]
             ]);
         } catch (\Exception $e) {
