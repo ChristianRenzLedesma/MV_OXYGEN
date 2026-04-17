@@ -74,10 +74,12 @@ class OtpController extends Controller
 
         Auth::login($user);
 
-        return Inertia::render('auth/email-verification-otp', [
-            'status' => 'Email verified successfully!',
-            'verified' => true
-        ]);
+        // Redirect based on user role
+        if ($user->role === 'admin') {
+            return redirect()->route('dashboard');
+        } else {
+            return redirect()->route('user.dashboard');
+        }
     }
 
     /**

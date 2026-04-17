@@ -1,22 +1,24 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Package, Calendar, Eye, PlusCircle, Clock, CheckCircle, AlertCircle, History } from 'lucide-react';
+import { Package, Calendar, Eye, PlusCircle, Clock, CheckCircle, AlertCircle, History, MapPin } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 
 interface RentalRequest {
     id: number;
     tank_type: string;
-    quantity: number;
-    start_date: string;
-    end_date: string;
+    quantity?: number;
+    start_date?: string;
+    end_date?: string;
     purpose: string;
     contact_number: string;
-    address: string;
-    status: 'pending' | 'approved' | 'rejected' | 'completed';
+    address?: string;
+    status: 'pending' | 'approved' | 'rejected' | 'completed' | 'in_transit' | 'delivered';
     admin_notes?: string;
     rejected_reason?: string;
     created_at: string;
+    delivery_address?: string;
+    pickup_address?: string;
     rental?: {
         id: number;
         tank_id: string;
@@ -37,7 +39,9 @@ export default function UserRentalIndex({ breadcrumbs = [{ title: 'Dashboard', h
             pending: 'bg-yellow-100 text-yellow-800',
             approved: 'bg-green-100 text-green-800',
             rejected: 'bg-red-100 text-red-800',
-            completed: 'bg-blue-100 text-blue-800'
+            completed: 'bg-blue-100 text-blue-800',
+            in_transit: 'bg-orange-100 text-orange-800',
+            delivered: 'bg-purple-100 text-purple-800'
         };
         return badges[status as keyof typeof badges] || 'bg-gray-100 text-gray-800';
     };
@@ -47,7 +51,9 @@ export default function UserRentalIndex({ breadcrumbs = [{ title: 'Dashboard', h
             pending: Clock,
             approved: CheckCircle,
             rejected: AlertCircle,
-            completed: History
+            completed: History,
+            in_transit: Package,
+            delivered: CheckCircle
         };
         return icons[status as keyof typeof icons] || Package;
     };
@@ -88,7 +94,7 @@ export default function UserRentalIndex({ breadcrumbs = [{ title: 'Dashboard', h
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
                     <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-yellow-500">
                         <div className="flex items-center justify-between">
                             <div>
@@ -117,6 +123,34 @@ export default function UserRentalIndex({ breadcrumbs = [{ title: 'Dashboard', h
                         </div>
                     </div>
 
+                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-orange-500">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-gray-500 text-sm">In Transit</p>
+                                <p className="text-2xl font-bold text-gray-800">
+                                    {rentalRequests.filter(r => r.status === 'in_transit').length}
+                                </p>
+                            </div>
+                            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                                <Package className="w-6 h-6 text-orange-600" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-gray-500 text-sm">Delivered</p>
+                                <p className="text-2xl font-bold text-gray-800">
+                                    {rentalRequests.filter(r => r.status === 'delivered').length}
+                                </p>
+                            </div>
+                            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                                <CheckCircle className="w-6 h-6 text-purple-600" />
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-red-500">
                         <div className="flex items-center justify-between">
                             <div>
@@ -127,20 +161,6 @@ export default function UserRentalIndex({ breadcrumbs = [{ title: 'Dashboard', h
                             </div>
                             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
                                 <AlertCircle className="w-6 h-6 text-red-600" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-gray-500 text-sm">Completed</p>
-                                <p className="text-2xl font-bold text-gray-800">
-                                    {rentalRequests.filter(r => r.status === 'completed').length}
-                                </p>
-                            </div>
-                            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                                <History className="w-6 h-6 text-blue-600" />
                             </div>
                         </div>
                     </div>
@@ -155,8 +175,7 @@ export default function UserRentalIndex({ breadcrumbs = [{ title: 'Dashboard', h
                             <thead>
                                 <tr className="border-b border-gray-200">
                                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Tank Type</th>
-                                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Quantity</th>
-                                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Rental Period</th>
+                                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Type</th>
                                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Purpose</th>
                                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
                                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Date</th>
@@ -166,18 +185,15 @@ export default function UserRentalIndex({ breadcrumbs = [{ title: 'Dashboard', h
                             <tbody>
                                 {rentalRequests.map((request) => {
                                     const StatusIcon = getStatusIcon(request.status);
+                                    const isTrackable = ['approved', 'in_transit', 'delivered'].includes(request.status);
+                                    const pickupType = request.delivery_address ? 'Delivery' : 'Pickup';
                                     return (
                                         <tr key={request.id} className="border-b border-gray-100 hover:bg-gray-50">
                                             <td className="py-3 px-4 text-gray-800">{request.tank_type}</td>
-                                            <td className="py-3 px-4 text-gray-800">{request.quantity}</td>
                                             <td className="py-3 px-4">
-                                                <div className="text-gray-800">
-                                                    <div className="flex items-center">
-                                                        <Calendar className="w-3 h-3 mr-1 text-gray-400" />
-                                                        {new Date(request.start_date).toLocaleDateString()}
-                                                    </div>
-                                                    <div className="text-xs text-gray-500">to {new Date(request.end_date).toLocaleDateString()}</div>
-                                                </div>
+                                                <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full">
+                                                    {pickupType}
+                                                </span>
                                             </td>
                                             <td className="py-3 px-4 text-gray-800 max-w-xs truncate" title={request.purpose}>
                                                 {request.purpose}
@@ -191,14 +207,26 @@ export default function UserRentalIndex({ breadcrumbs = [{ title: 'Dashboard', h
                                                 {new Date(request.created_at).toLocaleDateString()}
                                             </td>
                                             <td className="py-3 px-4">
-                                                <a
-                                                    href={`/user/rentals/${request.id}`}
-                                                    className="text-blue-600 hover:text-blue-800 flex items-center"
-                                                    title="View Details"
-                                                >
-                                                    <Eye className="w-4 h-4 mr-1" />
-                                                    View
-                                                </a>
+                                                <div className="flex space-x-2">
+                                                    <a
+                                                        href={`/user/rentals/${request.id}`}
+                                                        className="text-blue-600 hover:text-blue-800 flex items-center"
+                                                        title="View Details"
+                                                    >
+                                                        <Eye className="w-4 h-4 mr-1" />
+                                                        View
+                                                    </a>
+                                                    {isTrackable && (
+                                                        <a
+                                                            href={`/user/rentals/${request.id}/track`}
+                                                            className="text-green-600 hover:text-green-800 flex items-center"
+                                                            title="Track Delivery"
+                                                        >
+                                                            <MapPin className="w-4 h-4 mr-1" />
+                                                            Track
+                                                        </a>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     );

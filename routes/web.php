@@ -12,6 +12,14 @@ Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
 
+Route::get('/faq', function () {
+    return Inertia::render('faq');
+})->name('faq');
+
+Route::get('/contact', function () {
+    return Inertia::render('contact');
+})->name('contact');
+
 Route::middleware(['auth'])->group(function () {
     // User Dashboard Routes
     Route::get('user/dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
@@ -24,6 +32,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('user/rentals/create', [UserRentalController::class, 'create'])->name('user.rentals.create');
     Route::post('user/rentals', [UserRentalController::class, 'store'])->name('user.rentals.store');
     Route::get('user/rentals/{rentalRequest}', [UserRentalController::class, 'show'])->name('user.rentals.show');
+    Route::get('user/rentals/{rentalRequest}/track', [UserRentalController::class, 'track'])->name('user.rentals.track');
     Route::get('user/history', [UserRentalController::class, 'history'])->name('user.history');
     Route::get('user/settings', [UserRentalController::class, 'settings'])->name('user.settings');
     Route::post('user/settings/profile', [UserRentalController::class, 'updateProfile'])->name('user.settings.profile');

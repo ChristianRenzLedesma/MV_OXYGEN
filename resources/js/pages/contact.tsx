@@ -1,12 +1,30 @@
-import { type SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, FormEventHandler } from 'react';
+import { type SharedData } from '@/types';
 
-export default function Welcome() {
+export default function Contact() {
     const { auth } = usePage<SharedData>().props;
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [footerVisible, setFooterVisible] = useState(false);
     const footerRef = useRef<HTMLElement | null>(null);
+    const [contactForm, setContactForm] = useState({
+        name: '',
+        email: '',
+        message: ''
+    });
+
+    const handleContactSubmit: FormEventHandler = (e) => {
+        e.preventDefault();
+        // Handle contact form submission
+        console.log('Contact form submitted:', contactForm);
+        // You can add actual form submission logic here
+        alert('Thank you for your message! We will get back to you soon.');
+        setContactForm({ name: '', email: '', message: '' });
+    };
+
+    const handleContactChange = (field: string, value: string) => {
+        setContactForm(prev => ({ ...prev, [field]: value }));
+    };
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -25,7 +43,6 @@ export default function Welcome() {
             }
         );
 
-        // Observe footer
         if (footerRef.current) {
             observer.observe(footerRef.current);
         }
@@ -39,7 +56,7 @@ export default function Welcome() {
 
     return (
         <>
-            <Head title="MV Oxygen Trading">
+            <Head title="Contact - MV Oxygen Trading">
                 <link rel="preconnect" href="https://fonts.bunny.net" />
                 <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
             </Head>
@@ -168,75 +185,120 @@ export default function Welcome() {
                         </div>
                     </div>
                 </header>
-                <section id="home" className="w-full flex justify-center">
-                    <div className="py-2 lg:py-3 w-full max-w-7xl">
-                        <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-8">
-                            {/* Left Content */}
-                            <section className="flex-1 order-2 lg:order-1 animate-fadeInUp">
-                                <header>
-                                    <h1 className="font-bold mb-3 text-[#1b1b18] dark:text-[#EDEDEC]" style={{ fontSize: 'clamp(1.75rem, 5vw, 2.5rem)' }}>
-                                        <span>Oxygen Tank Rental &</span><br />
-                                        <span className="text-blue-600 italic" style={{ color: '#2563EB' }}>Refill management system</span>
-                                    </h1>
-                                    <p className="text-[#706f6c] dark:text-[#A1A09A] mb-4" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.25rem)' }}>
-                                        Manage rentals, track refills, monitor inventory in real-time
-                                    </p>
-                                </header>
-                                <Link
-                                    href={route('register')}
-                                    className="inline-block rounded px-4 py-3 text-white font-medium transition-all duration-300 hover:scale-105 animate-fadeInUp"
-                                    style={{ backgroundColor: '#2563EB', borderColor: '#2563EB', animationDelay: '0.2s' }}
-                                >
-                                    Get Started
-                                </Link>
+                {/* Header */}
+                <header className="max-w-4xl mx-auto text-center mb-12 animate-fadeInUp">
+                    <h1 className="text-4xl font-bold text-[#1b1b18] dark:text-[#EDEDEC] mb-4">
+                        Contact Us
+                    </h1>
+                    <p className="text-[#706f6c] dark:text-[#A1A09A] text-lg">
+                        Get in touch with us for any questions or concerns
+                    </p>
+                </header>
 
-                                {/* Feature Cards */}
-                                <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 lg:mt-5">
-                                    <article className="bg-white border-0 shadow-sm rounded-lg p-3 text-center animate-fadeInUp hover:shadow-lg transition-all duration-300" style={{ animationDelay: '0.4s' }}>
-                                        <div className="mx-auto mb-2 flex items-center justify-center rounded-full" style={{ width: '48px', height: '48px', backgroundColor: '#E3F2FD' }}>
-                                            <svg className="w-6 h-6" style={{ color: '#2563EB' }} fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-                                            </svg>
-                                        </div>
-                                        <h6 className="font-semibold mb-1" style={{ color: '#2563EB' }}>Tank Rental</h6>
-                                        <small className="text-[#706f6c]" style={{ fontSize: '0.75rem' }}>Manage and track oxygen tank rentals easily.</small>
-                                    </article>
-                                    <article className="bg-white border-0 shadow-sm rounded-lg p-3 text-center animate-fadeInUp hover:shadow-lg transition-all duration-300" style={{ animationDelay: '0.6s' }}>
-                                        <div className="mx-auto mb-2 flex items-center justify-center rounded-full" style={{ width: '48px', height: '48px', backgroundColor: '#E3F2FD' }}>
-                                            <svg className="w-6 h-6" style={{ color: '#2563EB' }} fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                                            </svg>
-                                        </div>
-                                        <h6 className="font-semibold mb-1" style={{ color: '#2563EB' }}>Refill Tracking</h6>
-                                        <small className="text-[#706f6c]" style={{ fontSize: '0.75rem' }}>Monitor refill requests and tank status in real-time.</small>
-                                    </article>
-                                    <article className="bg-white border-0 shadow-sm rounded-lg p-3 text-center animate-fadeInUp hover:shadow-lg transition-all duration-300" style={{ animationDelay: '0.8s' }}>
-                                        <div className="mx-auto mb-2 flex items-center justify-center rounded-full" style={{ width: '48px', height: '48px', backgroundColor: '#E8F5E9' }}>
-                                            <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                            </svg>
-                                        </div>
-                                        <h6 className="font-semibold mb-1" style={{ color: '#2563EB' }}>
-                                            Inventory<br className="hidden sm:inline" />Management
-                                        </h6>
-                                        <small className="text-[#706f6c]" style={{ fontSize: '0.75rem' }}>Keep accurate records of all oxygen tank inventory.</small>
-                                    </article>
-                                </section>
-                            </section>
-
-                            {/* Right Image */}
-                            <aside className="flex-1 text-center order-1 lg:order-2 flex items-center justify-center animate-fadeInUp" style={{ animationDelay: '0.3s' }}>
-                                <img
-                                    src="images/hero-image.png"
-                                    alt="Oxygen Tanks"
-                                    className="w-full h-auto max-w-md lg:max-w-lg rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
-                                    style={{ maxWidth: 'min(100%, 500px)' }}
+                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Contact Form */}
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg animate-fadeInUp">
+                        <h3 className="text-xl font-semibold mb-6 text-[#1b1b18] dark:text-[#EDEDEC]">Send us a Message</h3>
+                        <form onSubmit={handleContactSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-[#1b1b18] dark:text-[#EDEDEC] mb-2">Your Name</label>
+                                <input
+                                    type="text"
+                                    placeholder="Enter your name"
+                                    value={contactForm.name}
+                                    onChange={(e) => handleContactChange('name', e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-[#1b1b18] dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-300"
+                                    required
                                 />
-                            </aside>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-[#1b1b18] dark:text-[#EDEDEC] mb-2">Your Email</label>
+                                <input
+                                    type="email"
+                                    placeholder="Enter your email"
+                                    value={contactForm.email}
+                                    onChange={(e) => handleContactChange('email', e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-[#1b1b18] dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-300"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-[#1b1b18] dark:text-[#EDEDEC] mb-2">Your Message</label>
+                                <textarea
+                                    placeholder="Enter your message"
+                                    value={contactForm.message}
+                                    onChange={(e) => handleContactChange('message', e.target.value)}
+                                    rows={5}
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-[#1b1b18] dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-300 resize-none"
+                                    required
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-gray-800 shadow-lg"
+                            >
+                                Send Message
+                            </button>
+                        </form>
+                    </div>
+
+                    {/* Contact Info & Map */}
+                    <div className="space-y-6">
+                        {/* Company Info */}
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
+                            <div className="flex items-center gap-3 mb-4">
+                                <img
+                                    src="/images/mv-oxygen-logo.png"
+                                    alt="MV Oxygen Trading Logo"
+                                    className="w-10 h-10"
+                                />
+                                <div>
+                                    <h3 className="text-lg font-semibold text-[#1b1b18] dark:text-[#EDEDEC]">MV Oxygen Trading</h3>
+                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">Oxygen Tank Rental & Refill Services</p>
+                                </div>
+                            </div>
+                            <div className="space-y-3 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                <div className="flex items-start gap-3">
+                                    <svg className="w-5 h-5 mt-0.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    <span>Located in </span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                    <span>contact@mvoxygen.com</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                    </svg>
+                                    <span>+63 912 345 6789</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Google Maps */}
+                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden animate-fadeInUp" style={{ animationDelay: '0.4s' }}>
+                            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                                <h3 className="text-lg font-medium text-[#1b1b18] dark:text-[#EDEDEC]">Find us on the map</h3>
+                            </div>
+                            <div className="relative h-[300px]">
+                                <iframe 
+                                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3847.5302633465744!2d121.04813007011415!3d15.347742237171778!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33972300634ae665%3A0x1fe9ddec2dc8a12a!2sLily%E2%80%99s%20Merchandise!5e0!3m2!1sen!2sph!4v1775918142505!5m2!1sen!2sph" 
+                                    width="600" 
+                                    height="450" 
+                                    style={{ border: '0', width: '100%', height: '100%' }} 
+                                    allowFullScreen 
+                                    loading="lazy" 
+                                    referrerPolicy="no-referrer-when-downgrade"
+                                ></iframe>
+                            </div>
                         </div>
                     </div>
-                </section>
-            </div>
+                </div>
 
             <footer
                 ref={footerRef}
@@ -258,11 +320,12 @@ export default function Welcome() {
                             Oxygen Tank Rental & Refill Management System
                         </p>
                         <div className="mt-4 pt-4 border-t border-gray-700 text-gray-500 text-sm">
-                            © 2026 MV Oxygen Trading. All rights reserved.
+                            © 2024 MV Oxygen Trading. All rights reserved.
                         </div>
                     </div>
                 </div>
             </footer>
+            </div>
         </>
     );
 }

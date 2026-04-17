@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\RentalRequest;
 use App\Models\Rental;
+use App\Services\GeolocationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -13,6 +14,12 @@ use Inertia\Inertia;
 
 class UserRentalController extends Controller
 {
+    protected $geolocationService;
+
+    public function __construct(GeolocationService $geolocationService)
+    {
+        $this->geolocationService = $geolocationService;
+    }
     public function index()
     {
         $user = Auth::user();
@@ -58,12 +65,10 @@ class UserRentalController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'tank_type' => 'required|string|max:255',
-            'quantity' => 'required|integer|min:1|max:10',
-            'start_date' => 'required|date|after_or_equal:today',
-            'end_date' => 'required|date|after:start_date',
             'purpose' => 'required|string|max:1000',
             'contact_number' => 'required|string|max:20',
-            'address' => 'required|string|max:500'
+            'address' => 'required_if:pickup_type,delivery|string|max:500',
+            'pickup_type' => 'required|in:delivery,pickup'
         ]);
 
         if ($validator->fails()) {
@@ -79,27 +84,52 @@ class UserRentalController extends Controller
             ['name' => $user->name], // Use name as identifier since there's no user_id field
             [
                 'contact_number' => $request->contact_number,
-                'address' => $request->address,
+                'address' => $request->address ?? 'Pickup',
                 'status' => 'active',
                 'total_rentals' => 0,
                 'join_date' => now(),
             ]
         );
 
-        RentalRequest::create([
+        // Prepare rental data with required fields
+        $rentalData = [
             'customer_id' => $customer->id,
             'product_id' => null,
             'tank_type' => $request->tank_type,
-            'quantity' => $request->quantity,
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
+            'quantity' => 1, // Default quantity since we removed it from form
+            'start_date' => now()->addDay()->format('Y-m-d'), // Default to tomorrow
+            'end_date' => now()->addDays(7)->format('Y-m-d'), // Default to 7 days
             'purpose' => $request->purpose,
             'contact_number' => $request->contact_number,
-            'address' => $request->address,
+            'address' => $request->address ?? 'Pickup at Store',
             'status' => 'pending',
             'admin_notes' => null,
             'rejected_reason' => null
-        ]);
+        ];
+
+        // Handle geolocation based on pickup type
+        if ($request->pickup_type === 'delivery') {
+            $coordinates = $this->geolocationService->getCoordinatesFromAddress($request->address);
+            if ($coordinates) {
+                $rentalData['delivery_lat'] = $coordinates['lat'];
+                $rentalData['delivery_lng'] = $coordinates['lng'];
+                $rentalData['delivery_address'] = $coordinates['formatted_address'] ?? $request->address;
+            } else {
+                $rentalData['delivery_address'] = $request->address;
+            }
+        } else {
+            // For pickup, set default pickup location (store location)
+            $storeLocation = [
+                'lat' => 14.5995, // Manila coordinates (replace with actual store location)
+                'lng' => 120.9842,
+                'address' => 'MV Oxygen Trading, Manila, Philippines'
+            ];
+            $rentalData['pickup_lat'] = $storeLocation['lat'];
+            $rentalData['pickup_lng'] = $storeLocation['lng'];
+            $rentalData['pickup_address'] = $storeLocation['address'];
+        }
+
+        RentalRequest::create($rentalData);
 
         return redirect()->route('user.dashboard')
             ->with('success', 'Rental request submitted successfully!');
@@ -207,6 +237,63 @@ class UserRentalController extends Controller
 
         return redirect()->route('user.settings')
             ->with('success', 'Preferences updated!');
+    }
+
+    public function track(RentalRequest $rentalRequest)
+    {
+        $user = Auth::user();
+        
+        // Find customer record for this user
+        $customer = Customer::where('name', $user->name)->first();
+        
+        // Ensure user can only track their own requests
+        if (!$customer || $rentalRequest->customer_id !== $customer->id) {
+            abort(403);
+        }
+
+        // Prepare rental data with location information
+        $rentalData = [
+            'id' => $rentalRequest->id,
+            'tank_type' => $rentalRequest->tank_type,
+            'status' => $rentalRequest->status,
+            'pickup_type' => $rentalRequest->delivery_address ? 'delivery' : 'pickup',
+            'created_at' => $rentalRequest->created_at,
+        ];
+
+        // Add location data if available
+        if ($rentalRequest->delivery_address) {
+            $rentalData['delivery_location'] = [
+                'lat' => $rentalRequest->delivery_lat,
+                'lng' => $rentalRequest->delivery_lng,
+                'address' => $rentalRequest->delivery_address
+            ];
+        }
+
+        if ($rentalRequest->pickup_address) {
+            $rentalData['pickup_location'] = [
+                'lat' => $rentalRequest->pickup_lat,
+                'lng' => $rentalRequest->pickup_lng,
+                'address' => $rentalRequest->pickup_address
+            ];
+        }
+
+        if ($rentalRequest->current_lat && $rentalRequest->current_lng) {
+            $rentalData['current_location'] = [
+                'lat' => $rentalRequest->current_lat,
+                'lng' => $rentalRequest->current_lng
+            ];
+        }
+
+        return Inertia::render('user/rentals/track', [
+            'breadcrumbs' => [
+                ['title' => 'Dashboard', 'href' => '/user/dashboard'],
+                ['title' => 'Track Delivery', 'href' => "/user/rentals/{$rentalRequest->id}/track"]
+            ],
+            'rental' => $rentalData,
+            'auth' => [
+                'user' => $user
+            ]
+        ]);
     }
 
     public function show(RentalRequest $rentalRequest)

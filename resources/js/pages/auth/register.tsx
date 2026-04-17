@@ -135,6 +135,14 @@ export default function Register({ status, otp_sent, otp_error, user_id, otp_cod
         });
     };
 
+    const capitalizeName = (name: string) => {
+        return name
+            .toLowerCase()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    };
+
     useEffect(() => {
         checkPasswordMatch();
     }, [data.password, data.password_confirmation]);
@@ -245,7 +253,7 @@ export default function Register({ status, otp_sent, otp_error, user_id, otp_cod
                                                 border: '1px solid #ddd'
                                             }}
                                             value={data.name}
-                                            onChange={(e) => setData('name', e.target.value)}
+                                            onChange={(e) => setData('name', capitalizeName(e.target.value))}
                                             required
                                             autoFocus
                                             placeholder="Enter your full name"

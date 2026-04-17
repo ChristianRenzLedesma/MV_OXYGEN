@@ -73,34 +73,40 @@ export function Notifications() {
     }, []);
 
     const handleNotificationClick = async (notification: Notification) => {
-        // Navigate immediately if link exists
-        if (notification.link) {
-            router.visit(notification.link);
-        }
-        
-        // Close dropdown immediately
-        setIsOpen(false);
-        
         // Update local state immediately for better UX
         setNotifications(prev => 
             prev.map(n => n.id === notification.id ? { ...n, read: true } : n)
         );
         
-        // Mark as read in background using fetch (fire and forget)
-        fetch(`/notifications/${notification.id}/read`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                'Accept': 'application/json',
-            },
-        }).catch(error => {
+        try {
+            // Mark as read in backend
+            const response = await fetch(`/notifications/${notification.id}/read`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'Accept': 'application/json',
+                },
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            // Close dropdown after successful API call
+            setIsOpen(false);
+            
+            // Navigate if link exists
+            if (notification.link) {
+                router.visit(notification.link);
+            }
+        } catch (error) {
             console.error('Failed to mark notification as read:', error);
             // Revert state if failed
             setNotifications(prev => 
                 prev.map(n => n.id === notification.id ? { ...n, read: false } : n)
             );
-        });
+        }
     };
     
     const handleMarkAllAsRead = async () => {

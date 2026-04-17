@@ -1,8 +1,9 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Package, Calendar, CheckCircle, AlertCircle, Clock, PlusCircle, History, TrendingUp } from 'lucide-react';
+import { Package, Calendar, CheckCircle, AlertCircle, Clock, PlusCircle, History, TrendingUp, MapPin } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
+import DeliveryTrackingMap from '@/components/delivery-tracking-map';
 
 interface RentalRequest {
     id: number;
@@ -11,8 +12,19 @@ interface RentalRequest {
     start_date: string;
     end_date: string;
     purpose: string;
-    status: 'pending' | 'approved' | 'rejected' | 'completed';
+    status: 'pending' | 'approved' | 'rejected' | 'completed' | 'in_transit' | 'delivered';
     created_at: string;
+    address?: string;
+    barangay?: string;
+    city?: string;
+    province?: string;
+    postal_code?: string;
+    delivery_lat?: number;
+    delivery_lng?: number;
+    delivery_address?: string;
+    pickup_lat?: number;
+    pickup_lng?: number;
+    pickup_address?: string;
 }
 
 interface ActiveRental {
@@ -23,6 +35,12 @@ interface ActiveRental {
     status: string;
     pickup_date?: string;
     rental_request?: RentalRequest;
+    delivery_lat?: number;
+    delivery_lng?: number;
+    delivery_address?: string;
+    pickup_lat?: number;
+    pickup_lng?: number;
+    pickup_address?: string;
 }
 
 interface Stats {
@@ -158,35 +176,86 @@ export default function UserDashboard({ breadcrumbs = [{ title: 'Dashboard', hre
                             Active Rentals
                         </h2>
                         <div className="space-y-4">
-                            {activeRentals.map((rental) => (
-                                <div key={rental.id} className="border border-border rounded-lg p-4 hover:shadow-md transition-shadow dark:bg-card/50">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex-1">
-                                            <div className="flex items-center mb-2">
-                                                <span className="font-semibold text-foreground">
-                                                    {rental.rental_request?.tank_type || 'Oxygen Tank'}
-                                                </span>
-                                                <span className="ml-2 px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200">
-                                                    Active
-                                                </span>
+                            {activeRentals.map((rental) => {
+                                const isTrackable = ['approved', 'in_transit', 'delivered'].includes(rental.rental_request?.status);
+                                return (
+                                    <div key={rental.id} className="border border-border rounded-lg p-4 hover:shadow-md transition-shadow">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="flex-1">
+                                                <div className="flex items-center mb-2">
+                                                    <span className="font-semibold text-foreground">
+                                                        {rental.rental_request?.tank_type || 'Oxygen Tank'}
+                                                    </span>
+                                                    <span className="ml-2 px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200">
+                                                        Active
+                                                    </span>
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                                                    <div className="flex items-center">
+                                                        <Calendar className="w-4 h-4 mr-2 text-muted-foreground/60" />
+                                                        <div>
+                                                            <div className="font-medium text-foreground/90">Rental Period</div>
+                                                            <div className="text-xs text-foreground/80">{new Date(rental.start_date).toLocaleDateString()} - {new Date(rental.end_date).toLocaleDateString()}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center">
+                                                        <Package className="w-4 h-4 mr-2 text-muted-foreground/60" />
+                                                        <div>
+                                                            <div className="font-medium text-foreground/90">Tank ID</div>
+                                                            <div className="text-xs text-foreground/80">{rental.tank_id || 'TBD'}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
-                                                <div className="flex items-center">
-                                                    <Calendar className="w-4 h-4 mr-2 text-muted-foreground/60" />
-                                                    <span className="text-foreground/90">{new Date(rental.start_date).toLocaleDateString()} - {new Date(rental.end_date).toLocaleDateString()}</span>
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <Package className="w-4 h-4 mr-2 text-muted-foreground/60" />
-                                                    <span className="text-foreground/90">Tank ID: {rental.tank_id || 'TBD'}</span>
-                                                </div>
+                                            <div className="text-sm text-muted-foreground font-medium">
+                                                {rental.pickup_date ? `Picked up: ${new Date(rental.pickup_date).toLocaleDateString()}` : 'Ready for pickup'}
                                             </div>
                                         </div>
-                                        <div className="text-sm text-muted-foreground font-medium">
-                                            {rental.pickup_date ? `Picked up: ${new Date(rental.pickup_date).toLocaleDateString()}` : 'Ready for pickup'}
-                                        </div>
+                                        
+                                        {/* Tracking Section */}
+                                        {isTrackable && (
+                                            <div className="mt-4 pt-4 border-t border-border">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <h3 className="text-lg font-semibold text-foreground flex items-center">
+                                                        <MapPin className="w-4 h-4 mr-2 text-blue-600" />
+                                                        Track Your Delivery
+                                                    </h3>
+                                                    <a
+                                                        href={`/user/rentals/${rental.rental_request?.id}/track`}
+                                                        className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+                                                    >
+                                                        View Live Tracking
+                                                        <MapPin className="w-3 h-3 ml-1" />
+                                                    </a>
+                                                </div>
+                                                
+                                                {/* Mini Map Preview */}
+                                                <div className="h-32 w-full rounded-lg overflow-hidden border border-border">
+                                                    <DeliveryTrackingMap
+                                                        deliveryLocation={
+                                                            rental.rental_request?.delivery_address ? {
+                                                                lat: rental.rental_request.delivery_lat,
+                                                                lng: rental.rental_request.delivery_lng,
+                                                                address: rental.rental_request.delivery_address
+                                                            } : undefined
+                                                        }
+                                                        pickupLocation={
+                                                            rental.rental_request?.pickup_address ? {
+                                                                lat: rental.rental_request.pickup_lat,
+                                                                lng: rental.rental_request.pickup_lng,
+                                                                address: rental.rental_request.pickup_address
+                                                            } : undefined
+                                                        }
+                                                        currentLocation={undefined}
+                                                        isDelivered={rental.rental_request?.status === 'delivered'}
+                                                        className="h-32 w-full"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 )}

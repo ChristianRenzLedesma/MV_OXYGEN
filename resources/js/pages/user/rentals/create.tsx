@@ -12,12 +12,10 @@ interface Props {
 export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard', href: '/user/dashboard' }] }: Props) {
     const [formData, setFormData] = useState({
         tank_type: '',
-        quantity: 1,
-        start_date: '',
-        end_date: '',
         purpose: '',
         contact_number: '',
-        address: ''
+        address: '',
+        pickup_type: 'delivery'
     });
 
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -85,90 +83,61 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
                 {/* Form */}
                 <div className="bg-white rounded-xl shadow-lg p-6">
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Tank Type and Quantity */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Tank Type *
-                                </label>
-                                <select
-                                    value={formData.tank_type}
-                                    onChange={(e) => handleChange('tank_type', e.target.value)}
-                                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                        errors.tank_type ? 'border-red-500' : 'border-gray-300'
-                                    }`}
-                                    required
-                                >
-                                    <option value="">Select tank type</option>
-                                    {tankTypes.map(type => (
-                                        <option key={type} value={type}>{type}</option>
-                                    ))}
-                                </select>
-                                {errors.tank_type && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.tank_type}</p>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Quantity *
-                                </label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="10"
-                                    value={formData.quantity}
-                                    onChange={(e) => handleChange('quantity', parseInt(e.target.value))}
-                                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                        errors.quantity ? 'border-red-500' : 'border-gray-300'
-                                    }`}
-                                    required
-                                />
-                                {errors.quantity && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.quantity}</p>
-                                )}
-                            </div>
+                        {/* Tank Type */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Tank Type *
+                            </label>
+                            <select
+                                value={formData.tank_type}
+                                onChange={(e) => handleChange('tank_type', e.target.value)}
+                                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                    errors.tank_type ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                                required
+                            >
+                                <option value="">Select tank type</option>
+                                {tankTypes.map(type => (
+                                    <option key={type} value={type}>{type}</option>
+                                ))}
+                            </select>
+                            {errors.tank_type && (
+                                <p className="mt-1 text-sm text-red-600">{errors.tank_type}</p>
+                            )}
                         </div>
 
-                        {/* Rental Period */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Start Date *
+                        {/* Pickup Type */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Pickup Type *
+                            </label>
+                            <div className="space-y-2">
+                                <label className="flex items-center">
+                                    <input
+                                        type="radio"
+                                        name="pickup_type"
+                                        value="delivery"
+                                        checked={formData.pickup_type === 'delivery'}
+                                        onChange={(e) => handleChange('pickup_type', e.target.value)}
+                                        className="mr-2"
+                                    />
+                                    <span>Delivery</span>
                                 </label>
-                                <input
-                                    type="date"
-                                    value={formData.start_date}
-                                    onChange={(e) => handleChange('start_date', e.target.value)}
-                                    min={new Date().toISOString().split('T')[0]}
-                                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                        errors.start_date ? 'border-red-500' : 'border-gray-300'
-                                    }`}
-                                    required
-                                />
-                                {errors.start_date && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.start_date}</p>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    End Date *
+                                <label className="flex items-center">
+                                    <input
+                                        type="radio"
+                                        name="pickup_type"
+                                        value="pickup"
+                                        checked={formData.pickup_type === 'pickup'}
+                                        onChange={(e) => handleChange('pickup_type', e.target.value)}
+                                        className="mr-2"
+                                    />
+                                    <span>Pickup</span>
                                 </label>
-                                <input
-                                    type="date"
-                                    value={formData.end_date}
-                                    onChange={(e) => handleChange('end_date', e.target.value)}
-                                    min={formData.start_date || new Date().toISOString().split('T')[0]}
-                                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                        errors.end_date ? 'border-red-500' : 'border-gray-300'
-                                    }`}
-                                    required
-                                />
-                                {errors.end_date && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.end_date}</p>
-                                )}
                             </div>
+                            {errors.pickup_type && (
+                                <p className="mt-1 text-sm text-red-600">{errors.pickup_type}</p>
+                            )}
                         </div>
 
                         {/* Purpose */}
@@ -192,29 +161,30 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
                         </div>
 
                         {/* Contact Information */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Contact Number *
-                                </label>
-                                <div className="relative">
-                                    <Phone className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                                    <input
-                                        type="tel"
-                                        value={formData.contact_number}
-                                        onChange={(e) => handleChange('contact_number', e.target.value)}
-                                        className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                            errors.contact_number ? 'border-red-500' : 'border-gray-300'
-                                        }`}
-                                        placeholder="09XX-XXX-XXXX"
-                                        required
-                                    />
-                                </div>
-                                {errors.contact_number && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.contact_number}</p>
-                                )}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Contact Number *
+                            </label>
+                            <div className="relative">
+                                <Phone className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                                <input
+                                    type="tel"
+                                    value={formData.contact_number}
+                                    onChange={(e) => handleChange('contact_number', e.target.value)}
+                                    className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                        errors.contact_number ? 'border-red-500' : 'border-gray-300'
+                                    }`}
+                                    placeholder="09XX-XXX-XXXX"
+                                    required
+                                />
                             </div>
+                            {errors.contact_number && (
+                                <p className="mt-1 text-sm text-red-600">{errors.contact_number}</p>
+                            )}
+                        </div>
 
+                        {/* Delivery Address - Only show when delivery is selected */}
+                        {formData.pickup_type === 'delivery' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Delivery Address *
@@ -228,7 +198,7 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
                                         className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                                             errors.address ? 'border-red-500' : 'border-gray-300'
                                         }`}
-                                        placeholder="Enter delivery address"
+                                        placeholder="Enter your complete delivery address"
                                         required
                                     />
                                 </div>
@@ -236,7 +206,7 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
                                     <p className="mt-1 text-sm text-red-600">{errors.address}</p>
                                 )}
                             </div>
-                        </div>
+                        )}
 
                         {/* Submit Button */}
                         <div className="flex justify-end space-x-4">
