@@ -1,15 +1,16 @@
 import React from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calendar, MapPin, Phone, Package, User, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Phone, Package, User, Clock, CheckCircle, XCircle, AlertCircle, Edit, X } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
 
 interface RentalRequest {
     id: number;
+    request_type: string;
     tank_type: string;
     quantity: number;
     start_date: string;
@@ -17,7 +18,7 @@ interface RentalRequest {
     purpose: string;
     contact_number: string;
     address: string;
-    status: 'pending' | 'approved' | 'rejected' | 'completed';
+    status: 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled';
     admin_notes?: string;
     rejected_reason?: string;
     created_at: string;
@@ -59,6 +60,8 @@ export default function RentalShow() {
                 return 'bg-red-100 text-red-800';
             case 'completed':
                 return 'bg-blue-100 text-blue-800';
+            case 'cancelled':
+                return 'bg-gray-100 text-gray-800';
             case 'pending':
             default:
                 return 'bg-yellow-100 text-yellow-800';
@@ -73,6 +76,8 @@ export default function RentalShow() {
                 return <XCircle className="w-4 h-4" />;
             case 'completed':
                 return <CheckCircle className="w-4 h-4" />;
+            case 'cancelled':
+                return <XCircle className="w-4 h-4" />;
             case 'pending':
             default:
                 return <AlertCircle className="w-4 h-4" />;
@@ -134,9 +139,15 @@ export default function RentalShow() {
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
+                                        <label className="text-sm font-medium text-gray-500">Request Type</label>
+                                        <p className="text-lg font-semibold capitalize">{rentalRequest.request_type}</p>
+                                    </div>
+                                    <div>
                                         <label className="text-sm font-medium text-gray-500">Tank Type</label>
                                         <p className="text-lg font-semibold">{rentalRequest.tank_type}</p>
                                     </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="text-sm font-medium text-gray-500">Quantity</label>
                                         <p className="text-lg font-semibold">{rentalRequest.quantity}</p>
@@ -275,6 +286,40 @@ export default function RentalShow() {
                                     <CardTitle>Actions</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full flex items-center gap-2"
+                                        onClick={() => window.location.href = `/user/rentals/${rentalRequest.id}/edit`}
+                                    >
+                                        <Edit className="w-4 h-4" />
+                                        Edit Request
+                                    </Button>
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        className="w-full flex items-center gap-2"
+                                        onClick={() => {
+                                            if (confirm('Are you sure you want to cancel this rental request?')) {
+                                                router.post(`/user/rentals/${rentalRequest.id}/cancel`, {}, {
+                                                    onSuccess: () => {
+                                                        router.reload();
+                                                    },
+                                                    onError: (errors) => {
+                                                        if (errors.message && errors.message.includes('CSRF')) {
+                                                            alert('Session expired. Please refresh the page and try again.');
+                                                            window.location.reload();
+                                                        } else {
+                                                            alert('Failed to cancel request. Please try again.');
+                                                        }
+                                                    }
+                                                });
+                                            }
+                                        }}
+                                    >
+                                        <X className="w-4 h-4" />
+                                        Cancel Request
+                                    </Button>
                                     <Button
                                         variant="outline"
                                         size="sm"

@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Users, Package, Calendar, Phone, CheckCircle, AlertCircle, Eye, Edit, Clock } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 
@@ -33,6 +33,8 @@ interface Props {
 }
 
 export default function RentalIndex({ rentalRequests }: Props) {
+    const { url } = usePage().props;
+    const isRefillsPage = typeof url === 'string' && url.includes('/refills');
     const handleApprove = (id: number) => {
         if (confirm('Are you sure you want to approve this rental request?')) {
             router.post(`/rentals/${id}/approve`, {}, {
@@ -66,12 +68,12 @@ export default function RentalIndex({ rentalRequests }: Props) {
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
-        { title: 'Rentals', href: '/rentals' }
+        { title: isRefillsPage ? 'Refills' : 'Rentals', href: isRefillsPage ? '/refills' : '/rentals' }
     ];
 
     return (
         <AppLayout>
-            <Head title="Rental Requests - Admin" />
+            <Head title={isRefillsPage ? 'Refill Requests - Admin' : 'Rental Requests - Admin'} />
             <div className="min-h-screen bg-gray-50 p-6" style={{ marginLeft: '2rem' }}>
                 {/* Breadcrumbs */}
                 <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-6">
@@ -80,8 +82,8 @@ export default function RentalIndex({ rentalRequests }: Props) {
 
                 {/* Header */}
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-800 mb-2">Rental Requests</h1>
-                    <p className="text-gray-600">Manage oxygen tank rental requests and approvals</p>
+                    <h1 className="text-3xl font-bold text-gray-800 mb-2">{isRefillsPage ? 'Refill Requests' : 'Rental Requests'}</h1>
+                    <p className="text-gray-600">{isRefillsPage ? 'Manage oxygen tank refill requests and approvals' : 'Manage oxygen tank rental requests and approvals'}</p>
                 </div>
 
                 {/* Stats Cards */}

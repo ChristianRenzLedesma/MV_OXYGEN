@@ -93,11 +93,11 @@ export default function DeliveryTrackingMap({
   }
 
   return (
-    <div className={className}>
+    <div className={className} style={{ zIndex: 0, position: 'relative' }}>
       <MapContainer
         center={center}
         zoom={zoom}
-        style={{ height: '100%', width: '100%' }}
+        style={{ height: '100%', width: '100%', zIndex: 0, position: 'relative' }}
         className="rounded-lg"
       >
         <MapUpdater center={center} zoom={zoom} />

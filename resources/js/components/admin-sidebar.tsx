@@ -3,8 +3,8 @@ import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Package, ShoppingCart, Users, BarChart3, Settings, FileText, RefreshCw, Home, PlusCircle, History } from 'lucide-react';
+import { Link } from '@inertiajs/react';
+import { LayoutGrid, Users, Package, RefreshCw, FileText, BarChart3, Settings, ShoppingCart, TrendingUp, AlertCircle, Calendar, DollarSign } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const adminNavItems: NavItem[] = [
@@ -14,7 +14,7 @@ const adminNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
     {
-        title: 'Customer',
+        title: 'Customers',
         url: '/customer',
         icon: Users,
     },
@@ -25,8 +25,9 @@ const adminNavItems: NavItem[] = [
     },
     {
         title: 'Refills',
-        url: '/refills',
+        url: '#',
         icon: RefreshCw,
+        disabled: true,
     },
     {
         title: 'Inventory',
@@ -48,55 +49,18 @@ const adminNavItems: NavItem[] = [
     }
 ];
 
-const userNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        url: '/user/dashboard',
-        icon: Home,
-    },
-    {
-        title: 'New Request',
-        url: '/user/rentals/create',
-        icon: PlusCircle,
-    },
-    {
-        title: 'My Rentals',
-        url: '/user/rentals',
-        icon: Package,
-    },
-    {
-        title: 'History',
-        url: '/user/history',
-        icon: History,
-        disabled: true,
-    },
-    {
-        title: 'Settings',
-        url: '/user/settings',
-        icon: Settings,
-        disabled: true,
-    }
-];
-
 const footerNavItems: NavItem[] = [
     // Repository and documentation items removed
 ];
 
-export function AppSidebar() {
-    const { url } = usePage().props;
-    const isUserPage = typeof url === 'string' && url.includes('/user');
-    
-    // Choose navigation items based on current page
-    const navItems = isUserPage ? userNavItems : adminNavItems;
-    const logoHref = isUserPage ? '/user/dashboard' : '/dashboard';
-
+export function AdminSidebar() {
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={logoHref} prefetch>
+                            <Link href="/dashboard" prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -105,7 +69,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={navItems} />
+                <NavMain items={adminNavItems} />
             </SidebarContent>
 
             <SidebarFooter>

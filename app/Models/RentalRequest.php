@@ -10,6 +10,7 @@ class RentalRequest extends Model
 {
     protected $fillable = [
         'customer_id',
+        'request_type',
         'product_id',
         'tank_type',
         'quantity',
@@ -53,6 +54,7 @@ class RentalRequest extends Model
             'pending' => '<span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">Pending</span>',
             'approved' => '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Approved</span>',
             'rejected' => '<span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Rejected</span>',
+            'canceled' => '<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">Cancelled</span>',
             'completed' => '<span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Completed</span>',
             default => '<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">' . $this->status . '</span>'
         };

@@ -15,11 +15,11 @@ import { Edit } from 'lucide-react';
 import { useForm } from '@inertiajs/react';
 
 interface Customer {
-    customer_id: number;
+    id: number;
     name: string;
     contact_number: string;
     address: string;
-    status: 'active' | 'inactive';
+    status: 'active' | 'inactive' | 'archived';
 }
 
 interface EditCustomerDialogProps {
@@ -70,7 +70,7 @@ export default function EditCustomerDialog({ customer, onSuccess }: EditCustomer
             return;
         }
         
-        put(`/customer/${customer.customer_id}`, {
+        put(`/customer/${customer.id}`, {
             onSuccess: () => {
                 setOpen(false);
                 reset();
@@ -176,11 +176,12 @@ export default function EditCustomerDialog({ customer, onSuccess }: EditCustomer
                             <select
                                 id="status"
                                 value={data.status}
-                                onChange={(e) => setData('status', e.target.value as 'active' | 'inactive')}
+                                onChange={(e) => setData('status', e.target.value as 'active' | 'inactive' | 'archived')}
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
+                                <option value="archived">Archived</option>
                             </select>
                             {errors.status && (
                                 <p className="text-sm text-red-600">{errors.status}</p>

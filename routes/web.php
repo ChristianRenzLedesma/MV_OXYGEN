@@ -32,6 +32,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('user/rentals/create', [UserRentalController::class, 'create'])->name('user.rentals.create');
     Route::post('user/rentals', [UserRentalController::class, 'store'])->name('user.rentals.store');
     Route::get('user/rentals/{rentalRequest}', [UserRentalController::class, 'show'])->name('user.rentals.show');
+    Route::get('user/rentals/{rentalRequest}/edit', [UserRentalController::class, 'edit'])->name('user.rentals.edit');
+    Route::put('user/rentals/{rentalRequest}', [UserRentalController::class, 'update'])->name('user.rentals.update');
+    Route::post('user/rentals/{rentalRequest}/cancel', [UserRentalController::class, 'cancel'])->name('user.rentals.cancel');
     Route::get('user/rentals/{rentalRequest}/track', [UserRentalController::class, 'track'])->name('user.rentals.track');
     Route::get('user/history', [UserRentalController::class, 'history'])->name('user.history');
     Route::get('user/settings', [UserRentalController::class, 'settings'])->name('user.settings');
@@ -43,24 +46,39 @@ Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', function () {
         $page = request()->get('rental_page', 1);
         $perPage = 2;
-        
+
+        // Fetch latest activities
+        $activities = \App\Models\Activity::with(['user', 'customer', 'rentalRequest'])
+            ->latest()
+            ->limit(20)
+            ->get();
+
+        // Fetch rental request status counts
+        $pendingCount = \App\Models\RentalRequest::where('status', 'pending')->count();
+        $approvedCount = \App\Models\RentalRequest::where('status', 'approved')->count();
+        $rejectedCount = \App\Models\RentalRequest::where('status', 'rejected')->count();
+        $completedCount = \App\Models\RentalRequest::where('status', 'completed')->count();
+
         $pendingRentalRequestsQuery = \App\Models\RentalRequest::with(['customer'])
             ->where('status', 'pending')
             ->orderBy('created_at', 'desc');
-            
+
         $totalPending = $pendingRentalRequestsQuery->count();
         $pendingRentalRequests = $pendingRentalRequestsQuery
             ->skip(($page - 1) * $perPage)
             ->take($perPage)
             ->get();
 
-        // Get tanks due for return
-        $tanksDueForReturn = \App\Models\RentalRequest::getTanksDueForReturn(365);
-        $overdueTanks = \App\Models\RentalRequest::getOverdueTanks();
-
         return Inertia::render('dashboard', [
             'breadcrumbs' => [
                 ['title' => 'Dashboard', 'href' => '/dashboard']
+            ],
+            'activities' => $activities,
+            'rentalStats' => [
+                'pending' => $pendingCount,
+                'approved' => $approvedCount,
+                'rejected' => $rejectedCount,
+                'completed' => $completedCount,
             ],
             'pendingRentalRequests' => $pendingRentalRequests,
             'rentalPagination' => [
@@ -69,26 +87,32 @@ Route::middleware(['auth'])->group(function () {
                 'hasNext' => $page < ceil($totalPending / $perPage),
                 'hasPrev' => $page > 1
             ],
-            'tanksDueForReturn' => $tanksDueForReturn,
-            'overdueTanks' => $overdueTanks,
             'auth' => [
                 'user' => auth()->user()
             ]
         ]);
     })->name('dashboard');
     
+    // Customer Routes
     Route::get('customer', [CustomerController::class, 'index'])->name('customer');
     Route::get('customer/{id}', [CustomerController::class, 'show'])->name('customer.show');
     Route::post('customer', [CustomerController::class, 'store'])->name('customer.store');
     Route::get('customer/{id}/edit', [CustomerController::class, 'edit'])->name('customer.edit');
     Route::put('customer/{id}', [CustomerController::class, 'update'])->name('customer.update');
-    Route::delete('customer/{id}', [CustomerController::class, 'destroy'])->name('customer.destroy');
+    Route::post('customer/{id}/archive', [CustomerController::class, 'archive'])->name('customer.archive');
+    Route::post('customer/{id}/restore', [CustomerController::class, 'restore'])->name('customer.restore');
+    
+    // Activity Routes
+    Route::get('activities', [ActivityController::class, 'index'])->name('activities.index');
     
     // Rental Routes
     Route::get('rentals', [RentalController::class, 'index'])->name('rentals.index');
+    Route::get('refills', [RentalController::class, 'refills'])->name('refills.index');
+    Route::get('refills/{rentalRequest}', [RentalController::class, 'show'])->name('refills.show');
     Route::get('rentals/{rentalRequest}', [RentalController::class, 'show'])->name('rentals.show');
     Route::post('rentals/{rentalRequest}/approve', [RentalController::class, 'approve'])->name('rentals.approve');
     Route::post('rentals/{rentalRequest}/reject', [RentalController::class, 'reject'])->name('rentals.reject');
+    Route::post('rentals/{rentalRequest}/cancel', [RentalController::class, 'cancel'])->name('rentals.cancel');
     Route::post('rentals/{rentalRequest}/return', [RentalController::class, 'markAsReturned'])->name('rentals.return');
     Route::put('rentals/{rentalRequest}/notes', [RentalController::class, 'updateNotes'])->name('rentals.update-notes');
     

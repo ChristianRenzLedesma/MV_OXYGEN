@@ -364,21 +364,6 @@ export default function UserSettings() {
                     </CardContent>
                 </Card>
 
-                {/* Account Actions */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-red-600">Account Actions</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            <div>
-                                <Label className="text-red-600">Delete Account</Label>
-                                <p className="text-sm text-gray-500 mb-2">Permanently delete your account and all associated data</p>
-                                <Button variant="destructive" size="sm">Delete Account</Button>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
             </div>
         </AppLayout>
     );

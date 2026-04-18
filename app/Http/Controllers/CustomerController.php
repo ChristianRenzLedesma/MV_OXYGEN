@@ -55,16 +55,19 @@ class CustomerController extends Controller
      */
     public function index()
     {
-        $customers = Customer::orderBy('created_at', 'desc')->get();
-        
+        // Fetch all customers except Admin
+        $customersWithRentals = Customer::where('name', '!=', 'Admin')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         // Get all recent transactions (last 3 per customer)
         $allRecentTransactions = [];
-        $customers->each(function ($customer) use (&$allRecentTransactions) {
+        $customersWithRentals->each(function ($customer) use (&$allRecentTransactions) {
             $recentTransactions = $customer->transactions()
                 ->orderBy('transaction_date', 'desc')
                 ->take(3)
                 ->get();
-            
+
             foreach ($recentTransactions as $transaction) {
                 $allRecentTransactions[] = [
                     'id' => $transaction->id,
@@ -77,27 +80,15 @@ class CustomerController extends Controller
                 ];
             }
         });
-        
+
         // Sort all recent transactions by date (most recent first)
         usort($allRecentTransactions, function ($a, $b) {
             return strcmp($b['transaction_date'], $a['transaction_date']);
         });
-        
-        // Get tanks due for return
-        $tanksDueForReturn = \App\Models\RentalRequest::getTanksDueForReturn(30);
-        $overdueTanks = \App\Models\RentalRequest::getOverdueTanks();
-        
-        // Debug logging
-        \Log::info('Tanks due for return count: ' . $tanksDueForReturn->count());
-        \Log::info('Tanks due for return data: ', $tanksDueForReturn->toArray());
-        \Log::info('Overdue tanks count: ' . $overdueTanks->count());
-        \Log::info('Overdue tanks data: ', $overdueTanks->toArray());
-        
+
         return Inertia::render('customer', [
-            'customers' => $customers,
+            'customers' => $customersWithRentals,
             'recent_transactions' => $allRecentTransactions,
-            'tanks_due_for_return' => $tanksDueForReturn,
-            'overdue_tanks' => $overdueTanks,
             'breadcrumbs' => [
                 ['title' => 'Dashboard', 'href' => '/dashboard'],
                 ['title' => 'Customer Management', 'href' => '/customer']
@@ -263,14 +254,14 @@ class CustomerController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Archive the specified customer.
      */
-    public function destroy(string $id)
+    public function archive(string $id)
     {
         $customer = Customer::findOrFail($id);
         
         try {
-            $customer->delete();
+            $customer->update(['status' => 'archived']);
             
             // Get updated customer list
             $customers = Customer::orderBy('created_at', 'desc')->get();
@@ -283,7 +274,7 @@ class CustomerController extends Controller
             
             return Inertia::render('customer', [
                 'customers' => $customers,
-                'success' => 'Customer successfully deleted!',
+                'success' => 'Customer successfully archived!',
                 'breadcrumbs' => [
                     ['title' => 'Dashboard', 'href' => '/dashboard'],
                     ['title' => 'Customer Management', 'href' => '/customer']
@@ -294,7 +285,45 @@ class CustomerController extends Controller
             ]);
         } catch (\Exception $e) {
             return redirect()->back()
-                ->withErrors(['error' => 'Failed to delete customer. Please try again.']);
+                ->withInput()
+                ->withErrors(['error' => 'Failed to archive customer. Please try again.']);
+        }
+    }
+
+    /**
+     * Restore the specified archived customer.
+     */
+    public function restore(string $id)
+    {
+        $customer = Customer::findOrFail($id);
+        
+        try {
+            $customer->update(['status' => 'active']);
+            
+            // Get updated customer list
+            $customers = Customer::orderBy('created_at', 'desc')->get();
+            $customers->each(function ($customer) {
+                $customer->recent_transactions = $customer->transactions()
+                    ->orderBy('transaction_date', 'desc')
+                    ->take(3)
+                    ->get();
+            });
+            
+            return Inertia::render('customer', [
+                'customers' => $customers,
+                'success' => 'Customer successfully restored!',
+                'breadcrumbs' => [
+                    ['title' => 'Dashboard', 'href' => '/dashboard'],
+                    ['title' => 'Customer Management', 'href' => '/customer']
+                ],
+                'auth' => [
+                    'user' => auth()->user()
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => 'Failed to restore customer. Please try again.']);
         }
     }
 }

@@ -26,4 +26,9 @@ class Customer extends Model
     {
         return $this->hasMany(Transaction::class, 'customer_id', 'id');
     }
+
+    public function rentalRequests()
+    {
+        return $this->hasMany(RentalRequest::class, 'customer_id', 'id');
+    }
 }

@@ -9,7 +9,15 @@ import { type BreadcrumbItem, type SharedData } from '@/types';
 export default function AppSidebarLayout({ children, breadcrumbs = [] }: { children: React.ReactNode; breadcrumbs?: BreadcrumbItem[] }) {
     const { auth } = usePage<SharedData>().props;
     const user = auth?.user;
-    const isAdmin = user?.role === 'admin';
+    
+    // Check if user is admin using same logic as User model's isAdmin() method
+    const isAdmin = user?.role === 'admin' || 
+                   (user?.email && (
+                       user.email === 'admin@example.com' ||
+                       user.email === 'admin@mvoxygen.com' ||
+                       user.email === 'superadmin@mvoxygen.com' ||
+                       user.email.endsWith('@admin.mvoxygen.com')
+                   ));
 
     // Use UserSidebar for customer users, AppSidebar for admin users
     if (!isAdmin) {

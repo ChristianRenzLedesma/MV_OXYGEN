@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Users, Package, Calendar, Phone, MapPin, CheckCircle, AlertCircle, ArrowLeft, Edit } from 'lucide-react';
+import { Users, Package, Calendar, Phone, MapPin, CheckCircle, AlertCircle, ArrowLeft, Edit, X } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 
 interface Customer {
@@ -63,6 +63,19 @@ export default function RentalShow({ rentalRequest }: Props) {
             router.post(`/rentals/${rentalRequest.id}/reject`, { rejected_reason: reason }, {
                 onSuccess: () => {
                     router.reload();
+                }
+            });
+        }
+    };
+
+    const handleMarkAsReturned = () => {
+        if (confirm('Are you sure you want to mark this rental as returned/completed?')) {
+            router.post(`/rentals/${rentalRequest.id}/return`, {}, {
+                onSuccess: () => {
+                    router.reload();
+                },
+                onError: (errors) => {
+                    alert('Error marking as returned: ' + (errors.message || 'Please try again.'));
                 }
             });
         }
@@ -271,6 +284,18 @@ export default function RentalShow({ rentalRequest }: Props) {
                                     >
                                         <AlertCircle className="w-4 h-4 mr-2" />
                                         Reject Request
+                                    </button>
+                                </div>
+                            )}
+
+                            {rentalRequest.status === 'approved' && (
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={handleMarkAsReturned}
+                                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+                                    >
+                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                        Mark as Returned/Completed
                                     </button>
                                 </div>
                             )}

@@ -1,43 +1,59 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/react';
-import { Package, Calendar, MapPin, Phone, ArrowLeft, CheckCircle, X } from 'lucide-react';
+import { Head, router, usePage } from '@inertiajs/react';
+import { Package, Calendar, MapPin, Phone, ArrowLeft } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
-import { useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useEffect } from 'react';
 
-interface Props {
-    breadcrumbs?: BreadcrumbItem[];
+interface RentalRequest {
+    id: number;
+    tank_type: string;
+    quantity: number;
+    start_date: string;
+    end_date: string;
+    purpose: string;
+    contact_number: string;
+    address: string;
+    status: string;
 }
 
-export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard', href: '/user/dashboard' }] }: Props) {
+interface PageProps {
+    rentalRequest: RentalRequest;
+    breadcrumbs: BreadcrumbItem[];
+    auth: {
+        user: {
+            id: number;
+            name: string;
+            email: string;
+            role: string;
+        };
+    };
+}
+
+export default function RentalRequestEdit() {
+    const { props } = usePage<PageProps>();
+    const { rentalRequest, breadcrumbs } = props;
+    
     const [formData, setFormData] = useState({
-        request_type: 'rental',
-        tank_type: '',
-        purpose: '',
-        contact_number: '',
-        address: '',
-        pickup_type: 'delivery'
+        request_type: rentalRequest.request_type || 'rental',
+        tank_type: rentalRequest.tank_type || '',
+        purpose: rentalRequest.purpose || '',
+        contact_number: rentalRequest.contact_number || '',
+        address: rentalRequest.address || '',
+        pickup_type: rentalRequest.address && rentalRequest.address !== 'Pickup at Store' ? 'delivery' : 'pickup'
     });
 
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-
-        // Remove address if pickup type is selected
-        const submitData: any = { ...formData };
-        if (submitData.pickup_type === 'pickup') {
-            delete submitData.address;
-        }
-
-        router.post('/user/rentals', submitData, {
+        
+        router.put(`/user/rentals/${rentalRequest.id}`, formData, {
             onError: (errors) => {
                 setErrors(errors as Record<string, string>);
             },
             onSuccess: () => {
-                setShowSuccessModal(true);
+                router.visit(`/user/rentals/${rentalRequest.id}`);
             }
         });
     };
@@ -47,51 +63,39 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: '' }));
         }
-
-        // Clear address when switching to pickup
-        if (field === 'pickup_type' && value === 'pickup') {
-            setFormData(prev => ({ ...prev, address: '' }));
-        }
     };
 
-    const breadcrumbsWithCreate: BreadcrumbItem[] = [
-        ...breadcrumbs,
-        { title: 'New Rental Request', href: '/user/rentals/create' }
-    ];
-
     const tankTypes = [
-        { name: 'Medical Oxygen', price: 500 },
-        { name: 'Industrial Oxygen', price: 600 },
-        { name: 'Argon Tank', price: 700 },
-        { name: 'NitroGen', price: 550 },
-        { name: 'Flask Type Tank', price: 450 },
-        { name: 'Acetylene', price: 650 }
+        'Medical Oxygen',
+        'Industrial Oxygen', 
+        'Argon Tank',
+        'NitroGen',
+        'Flask Type Tank',
+        'Acetylene'
     ];
-
-    const selectedTank = tankTypes.find(t => t.name === formData.tank_type);
 
     return (
         <AppLayout>
-            <Head title="New Rental Request" />
+            <Head title={`Edit Rental Request #${rentalRequest.id}`} />
             <div className="min-h-screen bg-gray-50 p-6 w-full">
                 {/* Breadcrumbs */}
                 <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-6">
-                    <Breadcrumbs breadcrumbs={breadcrumbsWithCreate} />
+                    <Breadcrumbs breadcrumbs={breadcrumbs} />
                 </div>
 
                 {/* Header */}
                 <div className="mb-8">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-800 mb-2">New Rental Request</h1>
-                            <p className="text-gray-600">Submit a request for oxygen tank rental</p>
+                            <h1 className="text-3xl font-bold text-gray-800 mb-2">Edit Rental Request</h1>
+                            <p className="text-gray-600">Update your rental request details</p>
                         </div>
                         <a
-                            href="/user/dashboard"
+                            href={`/user/rentals/${rentalRequest.id}`}
                             className="flex items-center text-gray-600 hover:text-gray-800"
                         >
                             <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to Dashboard
+                            Back to Request
                         </a>
                     </div>
                 </div>
@@ -135,14 +139,9 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
                             >
                                 <option value="">Select tank type</option>
                                 {tankTypes.map(type => (
-                                    <option key={type.name} value={type.name}>{type.name} - ₱{type.price}</option>
+                                    <option key={type} value={type}>{type}</option>
                                 ))}
                             </select>
-                            {selectedTank && (
-                                <p className="mt-2 text-sm text-green-600 font-medium">
-                                    Price: ₱{selectedTank.price}
-                                </p>
-                            )}
                             {errors.tank_type && (
                                 <p className="mt-1 text-sm text-red-600">{errors.tank_type}</p>
                             )}
@@ -229,7 +228,7 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
                         {formData.pickup_type === 'delivery' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Your Address *
+                                    Delivery Address *
                                 </label>
                                 <div className="relative">
                                     <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
@@ -241,7 +240,7 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
                                             errors.address ? 'border-red-500' : 'border-gray-300'
                                         }`}
                                         placeholder="Enter your complete delivery address"
-                                        required={formData.pickup_type === 'delivery'}
+                                        required
                                     />
                                 </div>
                                 {errors.address && (
@@ -253,7 +252,7 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
                         {/* Submit Button */}
                         <div className="flex justify-end space-x-4">
                             <a
-                                href="/user/dashboard"
+                                href={`/user/rentals/${rentalRequest.id}`}
                                 className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                             >
                                 Cancel
@@ -263,40 +262,12 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
                                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
                             >
                                 <Package className="w-4 h-4 mr-2" />
-                                Submit Request
+                                Update Request
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
-
-            {/* Success Modal */}
-            {showSuccessModal && createPortal(
-                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div
-                        className="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl animate-in fade-in zoom-in duration-200"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="text-center">
-                            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-                                <CheckCircle className="h-6 w-6 text-green-600" />
-                            </div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Request Submitted Successfully!</h3>
-                            <p className="text-gray-600 mb-6">Your rental request has been submitted and is now pending approval.</p>
-                            <button
-                                onClick={() => {
-                                    setShowSuccessModal(false);
-                                    window.location.href = '/user/dashboard';
-                                }}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                            >
-                                OK
-                            </button>
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
         </AppLayout>
     );
 }

@@ -64,6 +64,7 @@ class UserRentalController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
+            'request_type' => 'required|in:rental,refill',
             'tank_type' => 'required|string|max:255',
             'purpose' => 'required|string|max:1000',
             'contact_number' => 'required|string|max:20',
@@ -78,6 +79,12 @@ class UserRentalController extends Controller
         }
 
         $user = Auth::user();
+
+        // Prevent admin users from creating rental requests
+        if ($user->role === 'admin') {
+            return redirect()->back()
+                ->with('error', 'Admin users are not allowed to create rental requests.');
+        }
 
         // Find or create customer record for this user
         $customer = Customer::firstOrCreate(
@@ -94,6 +101,7 @@ class UserRentalController extends Controller
         // Prepare rental data with required fields
         $rentalData = [
             'customer_id' => $customer->id,
+            'request_type' => $request->request_type,
             'product_id' => null,
             'tank_type' => $request->tank_type,
             'quantity' => 1, // Default quantity since we removed it from form
@@ -129,7 +137,17 @@ class UserRentalController extends Controller
             $rentalData['pickup_address'] = $storeLocation['address'];
         }
 
-        RentalRequest::create($rentalData);
+        $rentalRequest = RentalRequest::create($rentalData);
+
+        // Log activity
+        \App\Models\Activity::create([
+            'user_id' => $user->id,
+            'customer_id' => $customer->id,
+            'rental_request_id' => $rentalRequest->id,
+            'action' => $request->request_type === 'refill' ? 'refill_request' : 'rental_request',
+            'description' => "User {$user->name} submitted a {$request->request_type} request for {$request->tank_type}",
+            'type' => 'info',
+        ]);
 
         return redirect()->route('user.dashboard')
             ->with('success', 'Rental request submitted successfully!');
@@ -294,6 +312,134 @@ class UserRentalController extends Controller
                 'user' => $user
             ]
         ]);
+    }
+
+    public function edit(RentalRequest $rentalRequest)
+    {
+        $user = Auth::user();
+        
+        // Find customer record for this user
+        $customer = Customer::where('name', $user->name)->first();
+        
+        // Ensure user can only edit their own requests
+        if (!$customer || $rentalRequest->customer_id !== $customer->id) {
+            abort(403);
+        }
+
+        // Only allow editing pending requests
+        if ($rentalRequest->status !== 'pending') {
+            return redirect()->route('user.rentals.show', $rentalRequest)
+                ->with('error', 'You can only edit pending requests.');
+        }
+
+        return Inertia::render('user/rentals/edit', [
+            'breadcrumbs' => [
+                ['title' => 'Dashboard', 'href' => '/user/dashboard'],
+                ['title' => 'My Rentals', 'href' => '/user/rentals'],
+                ['title' => 'Edit Request', 'href' => "/user/rentals/{$rentalRequest->id}/edit"]
+            ],
+            'rentalRequest' => $rentalRequest,
+            'auth' => [
+                'user' => $user
+            ]
+        ]);
+    }
+
+    public function update(Request $request, RentalRequest $rentalRequest)
+    {
+        $user = Auth::user();
+        
+        // Find customer record for this user
+        $customer = Customer::where('name', $user->name)->first();
+        
+        // Ensure user can only update their own requests
+        if (!$customer || $rentalRequest->customer_id !== $customer->id) {
+            abort(403);
+        }
+
+        // Only allow updating pending requests
+        if ($rentalRequest->status !== 'pending') {
+            return redirect()->route('user.rentals.show', $rentalRequest)
+                ->with('error', 'You can only update pending requests.');
+        }
+
+        $validator = Validator::make($request->all(), [
+            'request_type' => 'required|in:rental,refill',
+            'tank_type' => 'required|string|max:255',
+            'purpose' => 'required|string|max:1000',
+            'contact_number' => 'required|string|max:20',
+            'address' => 'required_if:pickup_type,delivery|string|max:500',
+            'pickup_type' => 'required|in:delivery,pickup'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        // Prepare rental data
+        $rentalData = [
+            'request_type' => $request->request_type,
+            'tank_type' => $request->tank_type,
+            'purpose' => $request->purpose,
+            'contact_number' => $request->contact_number,
+            'address' => $request->address ?? 'Pickup at Store',
+        ];
+
+        // Handle geolocation based on pickup type
+        if ($request->pickup_type === 'delivery') {
+            $coordinates = $this->geolocationService->getCoordinatesFromAddress($request->address);
+            if ($coordinates) {
+                $rentalData['delivery_lat'] = $coordinates['lat'];
+                $rentalData['delivery_lng'] = $coordinates['lng'];
+                $rentalData['delivery_address'] = $coordinates['formatted_address'] ?? $request->address;
+            } else {
+                $rentalData['delivery_address'] = $request->address;
+            }
+        } else {
+            // For pickup, set default pickup location (store location)
+            $storeLocation = [
+                'lat' => 14.5995, // Manila coordinates (replace with actual store location)
+                'lng' => 120.9842,
+                'address' => 'MV Oxygen Trading, Manila, Philippines'
+            ];
+            $rentalData['pickup_lat'] = $storeLocation['lat'];
+            $rentalData['pickup_lng'] = $storeLocation['lng'];
+            $rentalData['pickup_address'] = $storeLocation['address'];
+        }
+
+        $rentalRequest->update($rentalData);
+
+        return redirect()->route('user.rentals.show', $rentalRequest)
+            ->with('success', 'Rental request updated successfully!');
+    }
+
+    public function cancel(RentalRequest $rentalRequest)
+    {
+        $user = Auth::user();
+        
+        // Find customer record for this user
+        $customer = Customer::where('name', $user->name)->first();
+        
+        // Ensure user can only cancel their own requests
+        if (!$customer || $rentalRequest->customer_id !== $customer->id) {
+            abort(403);
+        }
+
+        // Only allow canceling pending requests
+        if ($rentalRequest->status !== 'pending') {
+            return redirect()->route('user.rentals.show', $rentalRequest)
+                ->with('error', 'You can only cancel pending requests.');
+        }
+
+        $rentalRequest->update([
+            'status' => 'canceled',
+            'rejected_reason' => 'Cancelled by customer'
+        ]);
+
+        return redirect()->route('user.rentals.index')
+            ->with('success', 'Rental request cancelled successfully!');
     }
 
     public function show(RentalRequest $rentalRequest)

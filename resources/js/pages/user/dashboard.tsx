@@ -1,9 +1,11 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Package, Calendar, CheckCircle, AlertCircle, Clock, PlusCircle, History, TrendingUp, MapPin } from 'lucide-react';
+import { Package, Calendar, CheckCircle, AlertCircle, Clock, PlusCircle, History, TrendingUp, MapPin, X, DollarSign } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import DeliveryTrackingMap from '@/components/delivery-tracking-map';
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface RentalRequest {
     id: number;
@@ -77,8 +79,54 @@ export default function UserDashboard({ breadcrumbs = [{ title: 'Dashboard', hre
         return badges[status as keyof typeof badges] || 'bg-gray-100 text-gray-800';
     };
 
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [formData, setFormData] = useState({
+        request_type: 'rental',
+        tank_type: '',
+        purpose: '',
+        contact_number: '',
+        address: '',
+        pickup_type: 'delivery'
+    });
+
     const handleCreateRequest = () => {
-        router.visit('/user/rentals/create');
+        setShowCreateModal(true);
+    };
+
+    const handleCloseModal = () => {
+        setShowCreateModal(false);
+        setFormData({
+            request_type: 'rental',
+            tank_type: '',
+            purpose: '',
+            contact_number: '',
+            address: '',
+            pickup_type: 'delivery'
+        });
+    };
+
+    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+
+        // Clear address when switching to pickup
+        if (name === 'pickup_type' && value === 'pickup') {
+            setFormData(prev => ({ ...prev, address: '' }));
+        }
+    };
+
+    const handleSubmitRequest = (e: React.FormEvent) => {
+        e.preventDefault();
+        router.post('/user/rentals', formData, {
+            onSuccess: () => {
+                handleCloseModal();
+                setShowSuccessModal(true);
+            },
+            onError: (errors) => {
+                console.error('Error creating request:', errors);
+            }
+        });
     };
 
     return (
@@ -228,28 +276,30 @@ export default function UserDashboard({ breadcrumbs = [{ title: 'Dashboard', hre
                                                         <MapPin className="w-3 h-3 ml-1" />
                                                     </a>
                                                 </div>
-                                                
+
                                                 {/* Mini Map Preview */}
-                                                <div className="h-32 w-full rounded-lg overflow-hidden border border-border">
-                                                    <DeliveryTrackingMap
-                                                        deliveryLocation={
-                                                            rental.rental_request?.delivery_address ? {
-                                                                lat: rental.rental_request.delivery_lat,
-                                                                lng: rental.rental_request.delivery_lng,
-                                                                address: rental.rental_request.delivery_address
-                                                            } : undefined
-                                                        }
-                                                        pickupLocation={
-                                                            rental.rental_request?.pickup_address ? {
-                                                                lat: rental.rental_request.pickup_lat,
-                                                                lng: rental.rental_request.pickup_lng,
-                                                                address: rental.rental_request.pickup_address
-                                                            } : undefined
-                                                        }
-                                                        currentLocation={undefined}
-                                                        isDelivered={rental.rental_request?.status === 'delivered'}
-                                                        className="h-32 w-full"
-                                                    />
+                                                <div className="h-32 w-full rounded-lg overflow-hidden border border-border relative" style={{ zIndex: 0 }}>
+                                                    <div className="absolute inset-0" style={{ zIndex: 0 }}>
+                                                        <DeliveryTrackingMap
+                                                            deliveryLocation={
+                                                                rental.rental_request?.delivery_address ? {
+                                                                    lat: rental.rental_request.delivery_lat,
+                                                                    lng: rental.rental_request.delivery_lng,
+                                                                    address: rental.rental_request.delivery_address
+                                                                } : undefined
+                                                            }
+                                                            pickupLocation={
+                                                                rental.rental_request?.pickup_address ? {
+                                                                    lat: rental.rental_request.pickup_lat,
+                                                                    lng: rental.rental_request.pickup_lng,
+                                                                    address: rental.rental_request.pickup_address
+                                                                } : undefined
+                                                            }
+                                                            currentLocation={undefined}
+                                                            isDelivered={rental.rental_request?.status === 'delivered'}
+                                                            className="h-32 w-full"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
@@ -346,6 +396,153 @@ export default function UserDashboard({ breadcrumbs = [{ title: 'Dashboard', hre
                     </div>
                 </div>
             </div>
+
+            {/* Create Request Modal */}
+            {showCreateModal && createPortal(
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                    <div
+                        className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl animate-in fade-in zoom-in duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900">New Rental Request</h3>
+                            <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmitRequest} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Request Type</label>
+                                <select
+                                    name="request_type"
+                                    value={formData.request_type}
+                                    onChange={handleFormChange}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    required
+                                >
+                                    <option value="rental">New Rental</option>
+                                    <option value="refill">Refill</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tank Type</label>
+                                <select
+                                    name="tank_type"
+                                    value={formData.tank_type}
+                                    onChange={handleFormChange}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    required
+                                >
+                                    <option value="">Select Tank Type</option>
+                                    <option value="Medical Oxygen">Medical Oxygen</option>
+                                    <option value="Industrial Oxygen">Industrial Oxygen</option>
+                                    <option value="Argon">Argon</option>
+                                    <option value="Nitrogen">Nitrogen</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+                                <textarea
+                                    name="purpose"
+                                    value={formData.purpose}
+                                    onChange={handleFormChange}
+                                    placeholder="Describe the purpose of your request"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    rows={3}
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+                                <input
+                                    type="text"
+                                    name="contact_number"
+                                    value={formData.contact_number}
+                                    onChange={handleFormChange}
+                                    placeholder="Enter your contact number"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Pickup Type</label>
+                                <select
+                                    name="pickup_type"
+                                    value={formData.pickup_type}
+                                    onChange={handleFormChange}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    required
+                                >
+                                    <option value="delivery">Delivery</option>
+                                    <option value="pickup">Pickup at Store</option>
+                                </select>
+                            </div>
+
+                            {formData.pickup_type === 'delivery' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                                    <textarea
+                                        name="address"
+                                        value={formData.address}
+                                        onChange={handleFormChange}
+                                        placeholder="Enter your delivery address"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        rows={2}
+                                        required={formData.pickup_type === 'delivery'}
+                                    />
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 justify-end mt-6">
+                                <button
+                                    type="button"
+                                    onClick={handleCloseModal}
+                                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                    Submit Request
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Success Modal */}
+            {showSuccessModal && createPortal(
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                    <div
+                        className="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl animate-in fade-in zoom-in duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="text-center">
+                            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                                <CheckCircle className="h-6 w-6 text-green-600" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Request Submitted Successfully!</h3>
+                            <p className="text-gray-600 mb-6">Your rental request has been submitted and is now pending approval.</p>
+                            <button
+                                onClick={() => setShowSuccessModal(false)}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </AppLayout>
     );
 }

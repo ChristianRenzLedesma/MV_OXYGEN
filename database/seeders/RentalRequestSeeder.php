@@ -11,8 +11,8 @@ class RentalRequestSeeder extends Seeder
 {
     public function run(): void
     {
-        // Get or create a sample customer
-        $customer = Customer::first();
+        // Get or create a sample customer (exclude Admin)
+        $customer = Customer::where('name', '!=', 'Admin')->first();
         
         if (!$customer) {
             $customer = Customer::create([
