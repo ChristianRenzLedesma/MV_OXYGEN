@@ -115,84 +115,17 @@ export default function UserHistory() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Rental History" />
 
-            <div className="max-w-6xl mx-auto p-6 space-y-6">
+            <div className="w-full p-6 space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-800">Rental History</h1>
                         <p className="text-gray-600">View your complete rental request history</p>
                     </div>
-                    <Button
-                        onClick={handleCreateRequest}
-                        className="flex items-center gap-2"
-                    >
-                        <PlusCircle className="w-4 h-4" />
-                        New Request
-                    </Button>
+                    
                 </div>
 
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-gray-500">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-gray-500 text-sm">Total Requests</p>
-                                <p className="text-2xl font-bold text-gray-800">{stats.total_requests}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                                <Package className="w-6 h-6 text-gray-600" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-yellow-500">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-gray-500 text-sm">Pending</p>
-                                <p className="text-2xl font-bold text-gray-800">{stats.pending_requests}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                                <AlertCircle className="w-6 h-6 text-yellow-600" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-gray-500 text-sm">Approved</p>
-                                <p className="text-2xl font-bold text-gray-800">{stats.approved_requests}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                                <CheckCircle className="w-6 h-6 text-green-600" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-red-500">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-gray-500 text-sm">Rejected</p>
-                                <p className="text-2xl font-bold text-gray-800">{stats.rejected_requests}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                                <XCircle className="w-6 h-6 text-red-600" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-gray-500 text-sm">Completed</p>
-                                <p className="text-2xl font-bold text-gray-800">{stats.completed_requests}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                                <CheckCircle className="w-6 h-6 text-blue-600" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                
 
                 {/* History List */}
                 <Card>

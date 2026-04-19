@@ -41,6 +41,47 @@ class RentalController extends Controller
         ]);
     }
 
+    public function storeRefill(Request $request)
+    {
+        $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'tank_type' => 'required|string|max:255',
+            'refill_period' => 'required|string|max:100',
+            'refill_cost' => 'required|numeric|min:0'
+        ]);
+
+        $customer = Customer::findOrFail($request->customer_id);
+
+        $rentalRequest = RentalRequest::create([
+            'customer_id' => $customer->id,
+            'request_type' => 'refill',
+            'product_id' => null,
+            'tank_type' => $request->tank_type,
+            'quantity' => 1,
+            'start_date' => now()->addDay()->format('Y-m-d'),
+            'end_date' => now()->addDays(7)->format('Y-m-d'),
+            'purpose' => "Refill period: {$request->refill_period}",
+            'contact_number' => $customer->contact_number ?? 'N/A',
+            'address' => $customer->address ?? 'N/A',
+            'status' => 'pending',
+            'admin_notes' => null,
+            'rejected_reason' => null
+        ]);
+
+        // Log activity
+        $admin = auth()->user();
+        \App\Models\Activity::create([
+            'user_id' => $admin->id,
+            'customer_id' => $customer->id,
+            'rental_request_id' => $rentalRequest->id,
+            'action' => 'refill_created',
+            'description' => "Admin {$admin->name} created a refill oxygen customer request for {$request->tank_type} for {$customer->name}",
+            'type' => 'info',
+        ]);
+
+        return redirect()->route('refills.index')->with('success', 'Refill request created successfully!');
+    }
+
     public function approve(RentalRequest $rentalRequest)
     {
         \Log::info('Approving rental request: ' . $rentalRequest->id . ' with status: ' . $rentalRequest->status);
@@ -51,7 +92,7 @@ class RentalController extends Controller
         // Log activity
         $admin = auth()->user();
         $action = $rentalRequest->request_type === 'refill' ? 'refill_approved' : 'rental_approved';
-        $requestType = $rentalRequest->request_type === 'refill' ? 'refill' : 'rental';
+        $requestType = $rentalRequest->request_type === 'refill' ? 'refill oxygen customer' : 'rental';
         \App\Models\Activity::create([
             'user_id' => $admin->id,
             'customer_id' => $rentalRequest->customer_id,
@@ -71,6 +112,14 @@ class RentalController extends Controller
             'status' => 'active',
             'pickup_date' => now(),
         ];
+
+        // Create transaction record
+        \App\Models\Transaction::create([
+            'customer_id' => $rentalRequest->customer_id,
+            'tank_id' => $rentalRequest->tank_type,
+            'transaction_type' => $rentalRequest->request_type === 'refill' ? 'Refill' : 'Rent',
+            'transaction_date' => now(),
+        ]);
         
         \Log::info('Creating rental with data: ', $rentalData);
         
@@ -100,12 +149,13 @@ class RentalController extends Controller
 
         // Log activity
         $admin = auth()->user();
+        $requestType = $rentalRequest->request_type === 'refill' ? 'refill oxygen customer' : 'rental';
         \App\Models\Activity::create([
             'user_id' => $admin->id,
             'customer_id' => $rentalRequest->customer_id,
             'rental_request_id' => $rentalRequest->id,
             'action' => 'rental_rejected',
-            'description' => "Admin {$admin->name} rejected rental request for {$rentalRequest->tank_type} from {$rentalRequest->customer->name}. Reason: {$request->rejected_reason}",
+            'description' => "Admin {$admin->name} rejected {$requestType} request for {$rentalRequest->tank_type} from {$rentalRequest->customer->name}. Reason: {$request->rejected_reason}",
             'type' => 'error',
         ]);
 
@@ -154,6 +204,14 @@ class RentalController extends Controller
     {
         // Update rental request status to completed
         $rentalRequest->update(['status' => 'completed']);
+
+        // Create transaction record for return
+        \App\Models\Transaction::create([
+            'customer_id' => $rentalRequest->customer_id,
+            'tank_id' => $rentalRequest->tank_type,
+            'transaction_type' => 'Returned',
+            'transaction_date' => now(),
+        ]);
 
         // Log activity
         $admin = auth()->user();

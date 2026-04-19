@@ -299,6 +299,7 @@ export default function Contact() {
                         </div>
                     </div>
                 </div>
+            </div>
 
             <footer
                 ref={footerRef}
@@ -307,7 +308,7 @@ export default function Contact() {
                     }`}
             >
                 <div className="px-6 lg:px-8">
-                    <div className="max-w-4xl mx-auto">
+                    <div className="max-w-7xl mx-auto">
                         <div className="flex items-center gap-3 mb-4">
                             <img
                                 src="images/mv-oxygen-logo.png"
@@ -320,12 +321,11 @@ export default function Contact() {
                             Oxygen Tank Rental & Refill Management System
                         </p>
                         <div className="mt-4 pt-4 border-t border-gray-700 text-gray-500 text-sm">
-                            © 2024 MV Oxygen Trading. All rights reserved.
+                            © 2026 MV Oxygen Trading. All rights reserved.
                         </div>
                     </div>
                 </div>
             </footer>
-            </div>
         </>
     );
 }

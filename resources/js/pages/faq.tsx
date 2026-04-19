@@ -3,13 +3,15 @@ import { useState, useEffect, useRef } from 'react';
 import { type SharedData } from '@/types';
 
 export default function FAQ() {
-    const { auth } = usePage<SharedData>().props;
+    const { auth, url } = usePage<SharedData>().props;
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [openFaq, setOpenFaq] = useState<number | null>(null);
     const [visibleFaqItems, setVisibleFaqItems] = useState<Set<number>>(new Set());
     const [footerVisible, setFooterVisible] = useState(false);
     const faqRefs = useRef<(HTMLElement | null)[]>([]);
     const footerRef = useRef<HTMLElement | null>(null);
+
+    const currentPath = url || '';
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -70,7 +72,7 @@ export default function FAQ() {
                         </div>
 
                         {/* Desktop Navigation */}
-                        <div className="hidden lg:flex items-center gap-3">
+                        <div className="hidden lg:flex items-center gap-3 flex-1 justify-center">
                             <a
                                 href="/"
                                 className="inline-block px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:text-blue-600 dark:text-[#EDEDEC] dark:hover:text-blue-400 transition-colors"
@@ -79,7 +81,11 @@ export default function FAQ() {
                             </a>
                             <Link
                                 href="/faq"
-                                className="inline-block px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:text-blue-600 dark:text-[#EDEDEC] dark:hover:text-blue-400 transition-colors"
+                                className={`inline-block px-5 py-1.5 text-sm leading-normal transition-colors ${
+                                    currentPath === '/faq'
+                                        ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400'
+                                        : 'text-[#1b1b18] hover:text-blue-600 dark:text-[#EDEDEC] dark:hover:text-blue-400'
+                                }`}
                             >
                                 FAQ
                             </Link>
@@ -96,23 +102,26 @@ export default function FAQ() {
                                 >
                                     Dashboard
                                 </Link>
-                            ) : (
-                                <>
-                                    <Link
-                                        href={route('login')}
-                                        className="inline-block rounded-sm bg-blue-600 px-5 py-2 text-sm leading-normal text-white hover:bg-blue-700 transition-colors"
-                                    >
-                                        Log in
-                                    </Link>
-                                    <Link
-                                        href={route('register')}
-                                        className="inline-block rounded-sm border border-blue-600 bg-white px-5 py-2 text-sm leading-normal text-blue-600 hover:bg-blue-50 transition-colors"
-                                    >
-                                        Register
-                                    </Link>
-                                </>
-                            )}
+                            ) : null}
                         </div>
+
+                        {/* Auth Buttons */}
+                        {auth.user ? null : (
+                            <div className="hidden lg:flex items-center gap-3">
+                                <Link
+                                    href={route('login')}
+                                    className="inline-block rounded-sm bg-blue-600 px-5 py-2 text-sm leading-normal text-white hover:bg-blue-700 transition-colors"
+                                >
+                                    Log in
+                                </Link>
+                                <Link
+                                    href={route('register')}
+                                    className="inline-block rounded-sm border border-blue-600 bg-white px-5 py-2 text-sm leading-normal text-blue-600 hover:bg-blue-50 transition-colors"
+                                >
+                                    Register
+                                </Link>
+                            </div>
+                        )}
 
                         {/* Mobile Menu Button */}
                         <button
@@ -349,6 +358,7 @@ export default function FAQ() {
                         )}
                     </div>
                 </div>
+            </div>
 
             <footer
                 ref={footerRef}
@@ -357,7 +367,7 @@ export default function FAQ() {
                     }`}
             >
                 <div className="px-6 lg:px-8">
-                    <div className="max-w-4xl mx-auto">
+                    <div className="max-w-7xl mx-auto">
                         <div className="flex items-center gap-3 mb-4">
                             <img
                                 src="images/mv-oxygen-logo.png"
@@ -375,7 +385,6 @@ export default function FAQ() {
                     </div>
                 </div>
             </footer>
-            </div>
         </>
     );
 }

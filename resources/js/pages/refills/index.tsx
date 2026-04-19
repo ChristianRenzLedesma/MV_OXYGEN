@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Users, Package, Calendar, Phone, CheckCircle, AlertCircle, Eye, Edit, Clock, RefreshCw, X, DollarSign } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { useState } from 'react';
@@ -35,6 +35,17 @@ interface Props {
 }
 
 export default function RefillsIndex({ rentalRequests }: Props) {
+    const allTankTypes = [
+        { name: 'Argon Small', price: 1100 },
+        { name: 'Argon Big', price: 2200 },
+        { name: 'Nitro', price: 800 },
+        { name: 'Medical Oxygen Big', price: 550 },
+        { name: 'Medical Oxygen Medium', price: 500 },
+        { name: 'Flask Type Standard', price: 350 },
+        { name: 'Flask Type Small', price: 300 },
+        { name: 'Industrial Oxygen', price: 550 },
+        { name: 'Acetylene', price: 1700 }
+    ];
     const [showNewRefillModal, setShowNewRefillModal] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [formData, setFormData] = useState({
@@ -61,14 +72,36 @@ export default function RefillsIndex({ rentalRequests }: Props) {
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+
+        // Clear tank type when customer changes
+        if (name === 'customer_id') {
+            setFormData(prev => ({ ...prev, tank_type: '' }));
+        }
     };
+
+    // Get filtered tank types based on selected customer's approved requests
+    const getFilteredTankTypes = () => {
+        if (!formData.customer_id) return [];
+        const customerApprovedRequests = rentalRequests
+            .filter(r => r.customer.id === parseInt(formData.customer_id) && r.status === 'approved')
+            .map(r => r.tank_type);
+        const uniqueTankTypes = [...new Set(customerApprovedRequests)];
+        return allTankTypes.filter(tank => uniqueTankTypes.includes(tank.name));
+    };
+
+    const filteredTankTypes = getFilteredTankTypes();
 
     const handleSubmitRefill = (e: React.FormEvent) => {
         e.preventDefault();
-        // Submit logic here
-        console.log('New refill:', formData);
-        handleCloseModal();
-        setShowSuccessModal(true);
+        router.post('/refills', formData, {
+            onSuccess: () => {
+                handleCloseModal();
+                setShowSuccessModal(true);
+            },
+            onError: (errors) => {
+                console.error('Error creating refill:', errors);
+            }
+        });
     };
 
     const handleApprove = (id: number) => {
@@ -256,11 +289,34 @@ export default function RefillsIndex({ rentalRequests }: Props) {
                                 ))}
                             </tbody>
                         </table>
-                        
+
                         {rentalRequests.length === 0 && (
                             <div className="text-center py-8 text-gray-500">
                                 <RefreshCw className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                                 <p>No refill requests found.</p>
+                            </div>
+                        )}
+
+                        {/* Pagination */}
+                        {rentalRequests.length > 0 && (
+                            <div className="flex justify-between items-center mt-4 px-4">
+                                <button
+                                    onClick={() => router.get(window.location.href, { page: Math.max(1, (usePage().props.page as number || 1) - 1) })}
+                                    disabled={(usePage().props.page as number || 1) === 1}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Previous
+                                </button>
+                                <span className="text-sm text-gray-600">
+                                    Page {usePage().props.page as number || 1}
+                                </span>
+                                <button
+                                    onClick={() => router.get(window.location.href, { page: (usePage().props.page as number || 1) + 1 })}
+                                    disabled={rentalRequests.length < 10}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Next
+                                </button>
                             </div>
                         )}
                     </div>
@@ -319,10 +375,19 @@ export default function RefillsIndex({ rentalRequests }: Props) {
                                     required
                                 >
                                     <option value="">Select Tank Type</option>
-                                    <option value="Medical Oxygen">Medical Oxygen</option>
-                                    <option value="Industrial Oxygen">Industrial Oxygen</option>
-                                    <option value="Argon">Argon</option>
-                                    <option value="Nitrogen">Nitrogen</option>
+                                    {filteredTankTypes.length > 0 ? (
+                                        filteredTankTypes.map(tank => (
+                                            <option key={tank.name} value={tank.name}>
+                                                {tank.name}
+                                            </option>
+                                        ))
+                                    ) : (
+                                        allTankTypes.map(tank => (
+                                            <option key={tank.name} value={tank.name}>
+                                                {tank.name}
+                                            </option>
+                                        ))
+                                    )}
                                 </select>
                             </div>
 

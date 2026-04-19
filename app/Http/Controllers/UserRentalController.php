@@ -49,12 +49,30 @@ class UserRentalController extends Controller
 
     public function create()
     {
+        $user = Auth::user();
+
+        // Find customer record for this user
+        $customer = Customer::where('name', $user->name)->first();
+
+        // Get approved rental requests for this customer
+        $approvedRentalRequests = [];
+        if ($customer) {
+            $approvedRentalRequests = RentalRequest::where('customer_id', $customer->id)
+                ->where('status', 'approved')
+                ->get(['tank_type'])
+                ->pluck('tank_type')
+                ->unique()
+                ->values()
+                ->toArray();
+        }
+
         return Inertia::render('user/rentals/create', [
             'breadcrumbs' => [
                 ['title' => 'Dashboard', 'href' => '/user/dashboard'],
                 ['title' => 'My Rentals', 'href' => '/user/rentals'],
                 ['title' => 'New Request', 'href' => '/user/rentals/create']
             ],
+            'approved_rental_requests' => $approvedRentalRequests,
             'auth' => [
                 'user' => Auth::user()
             ]
@@ -79,12 +97,6 @@ class UserRentalController extends Controller
         }
 
         $user = Auth::user();
-
-        // Prevent admin users from creating rental requests
-        if ($user->role === 'admin') {
-            return redirect()->back()
-                ->with('error', 'Admin users are not allowed to create rental requests.');
-        }
 
         // Find or create customer record for this user
         $customer = Customer::firstOrCreate(
@@ -137,6 +149,11 @@ class UserRentalController extends Controller
             $rentalData['pickup_address'] = $storeLocation['address'];
         }
 
+        // Generate tracking number
+        $trackingNumber = 'MVO-' . strtoupper(substr(md5(uniqid(rand(), true)), 0, 8));
+
+        $rentalData['tracking_number'] = $trackingNumber;
+
         $rentalRequest = RentalRequest::create($rentalData);
 
         // Log activity
@@ -145,7 +162,9 @@ class UserRentalController extends Controller
             'customer_id' => $customer->id,
             'rental_request_id' => $rentalRequest->id,
             'action' => $request->request_type === 'refill' ? 'refill_request' : 'rental_request',
-            'description' => "User {$user->name} submitted a {$request->request_type} request for {$request->tank_type}",
+            'description' => $request->request_type === 'refill'
+                ? "User {$user->name} submitted a refill customer oxygen request for {$request->tank_type}"
+                : "User {$user->name} submitted a {$request->request_type} request for {$request->tank_type}",
             'type' => 'info',
         ]);
 
@@ -434,7 +453,7 @@ class UserRentalController extends Controller
         }
 
         $rentalRequest->update([
-            'status' => 'canceled',
+            'status' => 'cancelled',
             'rejected_reason' => 'Cancelled by customer'
         ]);
 

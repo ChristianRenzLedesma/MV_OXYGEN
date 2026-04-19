@@ -14,6 +14,7 @@ interface Props {
     status: string;
     pickup_type: string;
     created_at: string;
+    tracking_number?: string;
     delivery_location?: {
       lat: number;
       lng: number;
@@ -150,6 +151,11 @@ export default function RentalTracking({
                 <p className="text-sm text-gray-600">
                   Request ID: #{rental.id}
                 </p>
+                {rental.tracking_number && (
+                  <p className="text-sm text-blue-600 font-medium mt-1">
+                    Tracking Number: {rental.tracking_number}
+                  </p>
+                )}
               </div>
             </div>
             <div className="text-right">

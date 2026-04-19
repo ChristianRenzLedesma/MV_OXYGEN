@@ -223,11 +223,34 @@ export default function RentalIndex({ rentalRequests }: Props) {
                                 ))}
                             </tbody>
                         </table>
-                        
+
                         {rentalRequests.length === 0 && (
                             <div className="text-center py-8 text-gray-500">
                                 <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                                 <p>No rental requests found.</p>
+                            </div>
+                        )}
+
+                        {/* Pagination */}
+                        {rentalRequests.length > 0 && (
+                            <div className="flex justify-between items-center mt-4 px-4">
+                                <button
+                                    onClick={() => router.get(window.location.href, { page: Math.max(1, (usePage().props.page as number || 1) - 1) })}
+                                    disabled={(usePage().props.page as number || 1) === 1}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Previous
+                                </button>
+                                <span className="text-sm text-gray-600">
+                                    Page {usePage().props.page as number || 1}
+                                </span>
+                                <button
+                                    onClick={() => router.get(window.location.href, { page: (usePage().props.page as number || 1) + 1 })}
+                                    disabled={rentalRequests.length < 10}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Next
+                                </button>
                             </div>
                         )}
                     </div>

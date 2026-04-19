@@ -21,7 +21,8 @@ class RentalRequest extends Model
         'address',
         'status',
         'admin_notes',
-        'rejected_reason'
+        'rejected_reason',
+        'tracking_number'
     ];
 
     protected $casts = [

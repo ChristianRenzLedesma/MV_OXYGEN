@@ -96,7 +96,7 @@ export default function RentalShow() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Rental Request #${rentalRequest.id}`} />
 
-            <div className="max-w-4xl mx-auto p-6 space-y-6">
+            <div className="w-full p-6 space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">

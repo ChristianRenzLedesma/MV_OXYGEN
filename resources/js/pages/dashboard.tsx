@@ -75,7 +75,9 @@ export default function Dashboard({
 }: Props) {
     const [activeTab, setActiveTab] = useState('inventory');
     const [activityFilter, setActivityFilter] = useState<'latest' | 'recent'>('latest');
+    const [statsPeriod, setStatsPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
     const [activities, setActivities] = useState<Activity[]>(initialActivities);
+    const [rentalStats, setRentalStats] = useState(initialRentalStats);
     const [activityPage, setActivityPage] = useState(1);
     const itemsPerPage = 5;
 
@@ -99,10 +101,10 @@ export default function Dashboard({
 
     // Prepare chart data using real rental stats
     const chartData = [
-        { name: 'Pending', value: initialRentalStats.pending, color: '#3b82f6' },
-        { name: 'Approved', value: initialRentalStats.approved, color: '#22c55e' },
-        { name: 'Rejected', value: initialRentalStats.rejected, color: '#ef4444' },
-        { name: 'Completed', value: initialRentalStats.completed, color: '#a855f7' },
+        { name: 'Pending', value: rentalStats.pending, color: '#3b82f6' },
+        { name: 'Approved', value: rentalStats.approved, color: '#22c55e' },
+        { name: 'Rejected', value: rentalStats.rejected, color: '#ef4444' },
+        { name: 'Completed', value: rentalStats.completed, color: '#a855f7' },
     ];
 
     const handleActivityPrevPage = () => {
@@ -121,6 +123,20 @@ export default function Dashboard({
     useEffect(() => {
         setActivityPage(1);
     }, [activityFilter]);
+
+    // Fetch statistics based on selected period
+    useEffect(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('period', statsPeriod);
+        router.get(url.pathname + url.search, {}, {
+            preserveState: true,
+            onSuccess: (page: any) => {
+                if (page.props.rentalStats) {
+                    setRentalStats(page.props.rentalStats);
+                }
+            }
+        });
+    }, [statsPeriod]);
     const handleApprove = (id: number) => {
         if (confirm('Are you sure you want to approve this rental request?')) {
             router.post(`/rentals/${id}/approve`, {}, {
@@ -170,8 +186,49 @@ export default function Dashboard({
 
                 {/* Chart Section */}
                 <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-                    <h2 className="text-xl font-bold text-gray-800 mb-4">Rental Request Statistics</h2>
-                    <div className="w-full" style={{ height: '300px' }}>
+                    <div className="flex justify-between items-center mb-4">
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-800">Rental Request Statistics</h2>
+                            {statsPeriod === 'monthly' && (
+                                <p className="text-sm text-gray-500 mt-1">
+                                    {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                                </p>
+                            )}
+                        </div>
+                        <div className="flex space-x-2">
+                            <button
+                                onClick={() => setStatsPeriod('daily')}
+                                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                                    statsPeriod === 'daily'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                            >
+                                Daily
+                            </button>
+                            <button
+                                onClick={() => setStatsPeriod('weekly')}
+                                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                                    statsPeriod === 'weekly'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                            >
+                                Weekly
+                            </button>
+                            <button
+                                onClick={() => setStatsPeriod('monthly')}
+                                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                                    statsPeriod === 'monthly'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                            >
+                                Monthly
+                            </button>
+                        </div>
+                    </div>
+                    <div className="w-full" style={{ height: '300px', minHeight: '300px' }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" />
@@ -424,14 +481,14 @@ export default function Dashboard({
                                                 </div>
                                             </div>
                                             <div className="flex space-x-2 ml-4">
-                                                <button 
+                                                <button
                                                     onClick={() => handleApprove(request.id)}
                                                     className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors flex items-center"
                                                 >
                                                     <CheckCircle className="w-4 h-4 mr-1" />
                                                     Approve
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => handleReject(request.id)}
                                                     className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors flex items-center"
                                                 >

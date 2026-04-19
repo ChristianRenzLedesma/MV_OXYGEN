@@ -105,7 +105,7 @@ export default function Customer({ customers: initialCustomers = [], recent_tran
         <AppLayout>
             <Head title="Customer Management" />
             
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+            <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
                 {/* Breadcrumbs */}
                 <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                     <Breadcrumbs breadcrumbs={breadcrumbs} />
@@ -328,31 +328,31 @@ export default function Customer({ customers: initialCustomers = [], recent_tran
                     </CardContent>
                 </Card>
 
-                <div className="grid gap-6 lg:grid-cols-2 mt-6">
+                <div className="mt-6">
                     {/* Recent Transactions */}
-                    {recentTransactions && recentTransactions.length > 0 && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Recent Transactions</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="rounded-md border">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Customer</TableHead>
-                                                <TableHead>Tank ID</TableHead>
-                                                <TableHead>Type</TableHead>
-                                                <TableHead>Date</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {recentTransactions.slice(0, 5).map((transaction) => (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Recent Transactions</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="rounded-md border">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Customer</TableHead>
+                                            <TableHead>Tank ID</TableHead>
+                                            <TableHead>Type</TableHead>
+                                            <TableHead>Date</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {recentTransactions && recentTransactions.length > 0 ? (
+                                            recentTransactions.slice(0, 5).map((transaction) => (
                                                 <TableRow key={transaction.id}>
                                                     <TableCell className="font-medium">{transaction.customer_name}</TableCell>
                                                     <TableCell>{transaction.tank_id}</TableCell>
                                                     <TableCell>
-                                                        <Badge 
+                                                        <Badge
                                                             variant={
                                                                 transaction.transaction_type === 'Rent' ? 'default' :
                                                                 transaction.transaction_type === 'Returned' ? 'secondary' :
@@ -371,13 +371,19 @@ export default function Customer({ customers: initialCustomers = [], recent_tran
                                                         {new Date(transaction.transaction_date).toLocaleDateString()}
                                                     </TableCell>
                                                 </TableRow>
-                                            ))}
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                                                    No transactions found. Transactions will appear when rental requests are approved or returned.
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
                                         </TableBody>
                                     </Table>
                                 </div>
                             </CardContent>
                         </Card>
-                    )}
                 </div>
             </div>
         </AppLayout>

@@ -1,16 +1,16 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Package, Calendar, MapPin, Phone, ArrowLeft, CheckCircle, X } from 'lucide-react';
+import { Package, Calendar, MapPin, Phone, ArrowLeft } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
 
 interface Props {
     breadcrumbs?: BreadcrumbItem[];
+    approved_rental_requests?: string[];
 }
 
-export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard', href: '/user/dashboard' }] }: Props) {
+export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard', href: '/user/dashboard' }], approved_rental_requests = [] }: Props) {
     const [formData, setFormData] = useState({
         request_type: 'rental',
         tank_type: '',
@@ -21,7 +21,6 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
     });
 
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -37,7 +36,7 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
                 setErrors(errors as Record<string, string>);
             },
             onSuccess: () => {
-                setShowSuccessModal(true);
+                router.visit('/user/dashboard');
             }
         });
     };
@@ -48,9 +47,9 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
             setErrors(prev => ({ ...prev, [field]: '' }));
         }
 
-        // Clear address when switching to pickup
-        if (field === 'pickup_type' && value === 'pickup') {
-            setFormData(prev => ({ ...prev, address: '' }));
+        // Clear tank type when switching request type
+        if (field === 'request_type') {
+            setFormData(prev => ({ ...prev, tank_type: '' }));
         }
     };
 
@@ -59,14 +58,22 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
         { title: 'New Rental Request', href: '/user/rentals/create' }
     ];
 
-    const tankTypes = [
-        { name: 'Medical Oxygen', price: 500 },
-        { name: 'Industrial Oxygen', price: 600 },
-        { name: 'Argon Tank', price: 700 },
-        { name: 'NitroGen', price: 550 },
-        { name: 'Flask Type Tank', price: 450 },
-        { name: 'Acetylene', price: 650 }
+    const allTankTypes = [
+        { name: 'Argon Small', price: 1100 },
+        { name: 'Argon Big', price: 2200 },
+        { name: 'Nitro', price: 800 },
+        { name: 'Medical Oxygen Big', price: 550 },
+        { name: 'Medical Oxygen Medium', price: 500 },
+        { name: 'Flask Type Standard', price: 350 },
+        { name: 'Flask Type Small', price: 300 },
+        { name: 'Industrial Oxygen', price: 550 },
+        { name: 'Acetylene', price: 1700 }
     ];
+
+    // Filter tank types based on request type
+    const tankTypes = formData.request_type === 'refill'
+        ? allTankTypes.filter(tank => approved_rental_requests.includes(tank.name))
+        : allTankTypes;
 
     const selectedTank = tankTypes.find(t => t.name === formData.tank_type);
 
@@ -269,34 +276,6 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
                     </form>
                 </div>
             </div>
-
-            {/* Success Modal */}
-            {showSuccessModal && createPortal(
-                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div
-                        className="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl animate-in fade-in zoom-in duration-200"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="text-center">
-                            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-                                <CheckCircle className="h-6 w-6 text-green-600" />
-                            </div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Request Submitted Successfully!</h3>
-                            <p className="text-gray-600 mb-6">Your rental request has been submitted and is now pending approval.</p>
-                            <button
-                                onClick={() => {
-                                    setShowSuccessModal(false);
-                                    window.location.href = '/user/dashboard';
-                                }}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                            >
-                                OK
-                            </button>
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
         </AppLayout>
     );
 }

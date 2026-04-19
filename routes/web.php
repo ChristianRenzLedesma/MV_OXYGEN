@@ -46,6 +46,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', function () {
         $page = request()->get('rental_page', 1);
         $perPage = 2;
+        $period = request()->get('period', 'daily');
 
         // Fetch latest activities
         $activities = \App\Models\Activity::with(['user', 'customer', 'rentalRequest'])
@@ -53,11 +54,33 @@ Route::middleware(['auth'])->group(function () {
             ->limit(20)
             ->get();
 
-        // Fetch rental request status counts
-        $pendingCount = \App\Models\RentalRequest::where('status', 'pending')->count();
-        $approvedCount = \App\Models\RentalRequest::where('status', 'approved')->count();
-        $rejectedCount = \App\Models\RentalRequest::where('status', 'rejected')->count();
-        $completedCount = \App\Models\RentalRequest::where('status', 'completed')->count();
+        // Determine date range based on period
+        $startDate = now();
+        switch ($period) {
+            case 'daily':
+                $startDate = now()->startOfDay();
+                break;
+            case 'weekly':
+                $startDate = now()->subDays(7)->startOfDay();
+                break;
+            case 'monthly':
+                $startDate = now()->startOfMonth();
+                break;
+        }
+
+        // Fetch rental request status counts based on period
+        $pendingCount = \App\Models\RentalRequest::where('status', 'pending')
+            ->where('created_at', '>=', $startDate)
+            ->count();
+        $approvedCount = \App\Models\RentalRequest::where('status', 'approved')
+            ->where('created_at', '>=', $startDate)
+            ->count();
+        $rejectedCount = \App\Models\RentalRequest::where('status', 'rejected')
+            ->where('created_at', '>=', $startDate)
+            ->count();
+        $completedCount = \App\Models\RentalRequest::where('status', 'completed')
+            ->where('created_at', '>=', $startDate)
+            ->count();
 
         $pendingRentalRequestsQuery = \App\Models\RentalRequest::with(['customer'])
             ->where('status', 'pending')
@@ -110,6 +133,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('refills', [RentalController::class, 'refills'])->name('refills.index');
     Route::get('refills/{rentalRequest}', [RentalController::class, 'show'])->name('refills.show');
     Route::get('rentals/{rentalRequest}', [RentalController::class, 'show'])->name('rentals.show');
+    Route::post('refills', [RentalController::class, 'storeRefill'])->name('refills.store');
     Route::post('rentals/{rentalRequest}/approve', [RentalController::class, 'approve'])->name('rentals.approve');
     Route::post('rentals/{rentalRequest}/reject', [RentalController::class, 'reject'])->name('rentals.reject');
     Route::post('rentals/{rentalRequest}/cancel', [RentalController::class, 'cancel'])->name('rentals.cancel');
