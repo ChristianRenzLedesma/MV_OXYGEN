@@ -19,7 +19,13 @@ class Rental extends Model
         'total_amount',
         'pickup_date',
         'return_date',
-        'notes'
+        'notes',
+        'deposit_type',
+        'deposit_amount',
+        'deposit_payment_method',
+        'deposit_payment_date',
+        'deposit_status',
+        'deposit_reference_number'
     ];
 
     protected $casts = [

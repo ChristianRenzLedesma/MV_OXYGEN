@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, FormEventHandler } from 'react';
 import { type SharedData } from '@/types';
 
 export default function Contact() {
-    const { auth } = usePage<SharedData>().props;
+    const { auth, url } = usePage<SharedData>().props;
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [footerVisible, setFooterVisible] = useState(false);
     const footerRef = useRef<HTMLElement | null>(null);
@@ -12,6 +12,8 @@ export default function Contact() {
         email: '',
         message: ''
     });
+
+    const currentPath = url || '';
 
     const handleContactSubmit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -73,49 +75,68 @@ export default function Contact() {
                         </div>
 
                         {/* Desktop Navigation */}
-                        <div className="hidden lg:flex items-center gap-3">
+                        <div className="hidden lg:flex items-center gap-3 flex-1 justify-center">
                             <a
                                 href="/"
-                                className="inline-block px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:text-blue-600 dark:text-[#EDEDEC] dark:hover:text-blue-400 transition-colors"
+                                className={`inline-block px-5 py-1.5 text-sm leading-normal transition-colors ${
+                                    currentPath === '/'
+                                        ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400'
+                                        : 'text-[#1b1b18] hover:text-blue-600 dark:text-[#EDEDEC] dark:hover:text-blue-400'
+                                }`}
                             >
                                 Home
                             </a>
                             <Link
                                 href="/faq"
-                                className="inline-block px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:text-blue-600 dark:text-[#EDEDEC] dark:hover:text-blue-400 transition-colors"
+                                className={`inline-block px-5 py-1.5 text-sm leading-normal transition-colors ${
+                                    currentPath === '/faq'
+                                        ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400'
+                                        : 'text-[#1b1b18] hover:text-blue-600 dark:text-[#EDEDEC] dark:hover:text-blue-400'
+                                }`}
                             >
                                 FAQ
                             </Link>
                             <Link
                                 href="/contact"
-                                className="inline-block px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:text-blue-600 dark:text-[#EDEDEC] dark:hover:text-blue-400 transition-colors"
+                                className={`inline-block px-5 py-1.5 text-sm leading-normal transition-colors ${
+                                    currentPath === '/contact'
+                                        ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400'
+                                        : 'text-[#1b1b18] hover:text-blue-600 dark:text-[#EDEDEC] dark:hover:text-blue-400'
+                                }`}
                             >
                                 Contact
                             </Link>
                             {auth.user ? (
                                 <Link
                                     href={route('dashboard')}
-                                    className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
+                                    className={`inline-block px-5 py-1.5 text-sm leading-normal transition-colors ${
+                                        currentPath === '/dashboard'
+                                            ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400'
+                                            : 'text-[#1b1b18] border border-[#19140035] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]'
+                                    }`}
                                 >
                                     Dashboard
                                 </Link>
-                            ) : (
-                                <>
-                                    <Link
-                                        href={route('login')}
-                                        className="inline-block rounded-sm bg-blue-600 px-5 py-2 text-sm leading-normal text-white hover:bg-blue-700 transition-colors"
-                                    >
-                                        Log in
-                                    </Link>
-                                    <Link
-                                        href={route('register')}
-                                        className="inline-block rounded-sm border border-blue-600 bg-white px-5 py-2 text-sm leading-normal text-blue-600 hover:bg-blue-50 transition-colors"
-                                    >
-                                        Register
-                                    </Link>
-                                </>
-                            )}
+                            ) : null}
                         </div>
+
+                        {/* Auth Buttons */}
+                        {auth.user ? null : (
+                            <div className="hidden lg:flex items-center gap-3">
+                                <Link
+                                    href={route('login')}
+                                    className="inline-block rounded-sm bg-blue-600 px-5 py-2 text-sm leading-normal text-white hover:bg-blue-700 transition-colors"
+                                >
+                                    Log in
+                                </Link>
+                                <Link
+                                    href={route('register')}
+                                    className="inline-block rounded-sm border border-blue-600 bg-white px-5 py-2 text-sm leading-normal text-blue-600 hover:bg-blue-50 transition-colors"
+                                >
+                                    Register
+                                </Link>
+                            </div>
+                        )}
 
                         {/* Mobile Menu Button */}
                         <button

@@ -41,6 +41,13 @@ class UserDashboardController extends Controller
             'completed_rentals' => Rental::where('customer_id', $customerId)->where('status', 'completed')->count(),
         ];
 
+        // Get available tank types from inventory
+        $tankTypes = \App\Models\Tank::where('status', 'available')
+            ->where('quantity', '>', 0)
+            ->pluck('tank_type')
+            ->unique()
+            ->values();
+
         return Inertia::render('user/dashboard', [
             'breadcrumbs' => [
                 ['title' => 'Dashboard', 'href' => '/user/dashboard']
@@ -48,6 +55,7 @@ class UserDashboardController extends Controller
             'rentalRequests' => $rentalRequests,
             'activeRentals' => $activeRentals,
             'stats' => $stats,
+            'tankTypes' => $tankTypes,
             'auth' => [
                 'user' => $user
             ]

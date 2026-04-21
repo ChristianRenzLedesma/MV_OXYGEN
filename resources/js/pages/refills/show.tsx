@@ -1,8 +1,9 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Users, Package, Calendar, Phone, MapPin, CheckCircle, AlertCircle, ArrowLeft, Edit, X, RefreshCw } from 'lucide-react';
+import { Users, Package, Calendar, Phone, MapPin, CheckCircle, AlertCircle, ArrowLeft, Edit, X, RefreshCw, DollarSign } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
+import { useState } from 'react';
 
 interface Customer {
     id: number;
@@ -22,6 +23,12 @@ interface Rental {
     return_date?: string;
     total_amount?: number;
     notes?: string;
+    deposit_type?: string;
+    deposit_amount?: number;
+    deposit_payment_method?: string;
+    deposit_payment_date?: string;
+    deposit_status?: string;
+    deposit_reference_number?: string;
 }
 
 interface RentalRequest {
@@ -48,20 +55,74 @@ interface Props {
 }
 
 export default function RefillShow({ rentalRequest }: Props) {
+    const [showDepositModal, setShowDepositModal] = useState(false);
+    const [depositForm, setDepositForm] = useState({
+        amount: '',
+        payment_method: 'cash',
+        reference_number: '',
+        notes: ''
+    });
+
     const handleApprove = () => {
-        if (confirm('Are you sure you want to approve this refill request?')) {
-            router.post(`/rentals/${rentalRequest.id}/approve`, {}, {
-                onSuccess: () => {
-                    router.reload();
-                }
+        handleOpenDepositModal();
+    };
+
+    const handleUpdateDeposit = () => {
+        if (!rentalRequest.rental) {
+            alert('No rental record found');
+            return;
+        }
+        router.post(`/rentals/${rentalRequest.rental.id}/deposit`, {
+            amount: depositForm.amount,
+            payment_method: depositForm.payment_method,
+            reference_number: depositForm.reference_number,
+            notes: depositForm.notes,
+        }, {
+            onSuccess: () => {
+                setShowDepositModal(false);
+                router.reload();
+            }
+        });
+    };
+
+    const handleApproveWithDeposit = () => {
+        router.post(`/refills/${rentalRequest.id}/approve`, {
+            ...depositForm,
+            deposit_amount: depositForm.amount,
+            deposit_payment_method: depositForm.payment_method,
+            deposit_reference_number: depositForm.reference_number,
+        }, {
+            onSuccess: () => {
+                setShowDepositModal(false);
+                router.reload();
+            }
+        });
+    };
+
+    const handleOpenDepositModal = () => {
+        // Pre-populate form with existing deposit information if it exists
+        if (rentalRequest.rental && rentalRequest.rental.deposit_amount) {
+            setDepositForm({
+                amount: rentalRequest.rental.deposit_amount.toString(),
+                payment_method: rentalRequest.rental.deposit_payment_method || 'cash',
+                reference_number: rentalRequest.rental.deposit_reference_number || '',
+                notes: ''
+            });
+        } else {
+            setDepositForm({
+                amount: '',
+                payment_method: 'cash',
+                reference_number: '',
+                notes: ''
             });
         }
+        setShowDepositModal(true);
     };
 
     const handleReject = () => {
         const reason = prompt('Please provide a reason for rejection:');
         if (reason) {
-            router.post(`/rentals/${rentalRequest.id}/reject`, { rejected_reason: reason }, {
+            router.post(`/refills/${rentalRequest.id}/reject`, { rejected_reason: reason }, {
                 onSuccess: () => {
                     router.reload();
                 }
@@ -71,7 +132,7 @@ export default function RefillShow({ rentalRequest }: Props) {
 
     const handleMarkAsReturned = () => {
         if (confirm('Are you sure you want to mark this refill as returned/completed?')) {
-            router.post(`/rentals/${rentalRequest.id}/return`, {}, {
+            router.post(`/refills/${rentalRequest.id}/return`, {}, {
                 onSuccess: () => {
                     router.reload();
                 },
@@ -83,7 +144,7 @@ export default function RefillShow({ rentalRequest }: Props) {
     };
 
     const updateNotes = (notes: string) => {
-        router.put(`/rentals/${rentalRequest.id}/notes`, { admin_notes: notes }, {
+        router.put(`/refills/${rentalRequest.id}/notes`, { admin_notes: notes }, {
             onSuccess: () => {
                 router.reload();
             }
@@ -302,9 +363,157 @@ export default function RefillShow({ rentalRequest }: Props) {
                                 </div>
                             </div>
                         )}
+
+                        {/* Deposit Information */}
+                        {rentalRequest.rental && (
+                            <div className="bg-white rounded-xl shadow-lg p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center">
+                                        <Package className="w-5 h-5 mr-2 text-blue-600" />
+                                        <h2 className="text-xl font-bold text-gray-800">Deposit Information</h2>
+                                    </div>
+                                    {rentalRequest.status === 'approved' && (
+                                        <button
+                                            onClick={handleOpenDepositModal}
+                                            className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                        >
+                                            Update Deposit
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-sm text-gray-500">Type</label>
+                                        <p className="font-medium text-gray-800">
+                                            {rentalRequest.rental.deposit_type || 'Not set'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm text-gray-500">Deposit Amount</label>
+                                        <p className="font-medium text-gray-800">
+                                            {rentalRequest.rental.deposit_amount !== null && rentalRequest.rental.deposit_amount !== undefined ?
+                                                `PHP ${rentalRequest.rental.deposit_amount}` :
+                                                'Not set'
+                                            }
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm text-gray-500">Date</label>
+                                        <p className="font-medium text-gray-800">
+                                            {rentalRequest.rental.deposit_payment_date ?
+                                                new Date(rentalRequest.rental.deposit_payment_date).toLocaleDateString() :
+                                                'Not paid'
+                                            }
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm text-gray-500">Status</label>
+                                        <p className="font-medium text-gray-800">
+                                            {rentalRequest.rental.deposit_status || 'Pending'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
+
+            {/* Deposit Modal */}
+            {showDepositModal && (
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-bold text-gray-800 flex items-center">
+                                <DollarSign className="w-5 h-5 mr-2 text-blue-600" />
+                                Deposit Information
+                            </h3>
+                            <button
+                                onClick={() => setShowDepositModal(false)}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                                <select
+                                    value={depositForm.payment_method}
+                                    onChange={(e) => setDepositForm({ ...depositForm, payment_method: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="cash">Cash</option>
+                                    <option value="gcash">GCash</option>
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                    <option value="maya">Maya</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Deposit Amount</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={depositForm.amount}
+                                    onChange={(e) => setDepositForm({ ...depositForm, amount: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="0.00"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                                <input
+                                    type="date"
+                                    value={new Date().toISOString().split('T')[0]}
+                                    disabled
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Reference Number (Optional)</label>
+                                <input
+                                    type="text"
+                                    value={depositForm.reference_number}
+                                    onChange={(e) => setDepositForm({ ...depositForm, reference_number: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="e.g., 1234567890"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
+                                <textarea
+                                    value={depositForm.notes}
+                                    onChange={(e) => setDepositForm({ ...depositForm, notes: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    rows={2}
+                                    placeholder="Additional notes..."
+                                />
+                            </div>
+
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={() => setShowDepositModal(false)}
+                                    className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={rentalRequest.status === 'pending' ? handleApproveWithDeposit : handleUpdateDeposit}
+                                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                    {rentalRequest.status === 'pending' ? 'Approve with Deposit' : 'Update Deposit'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     );
 }

@@ -106,7 +106,7 @@ export default function RefillsIndex({ rentalRequests }: Props) {
 
     const handleApprove = (id: number) => {
         if (confirm('Are you sure you want to approve this refill request?')) {
-            router.post(`/rentals/${id}/approve`, {}, {
+            router.post(`/refills/${id}/approve`, {}, {
                 onSuccess: () => {
                     alert('Refill request approved successfully!');
                 }
@@ -117,7 +117,7 @@ export default function RefillsIndex({ rentalRequests }: Props) {
     const handleReject = (id: number) => {
         const reason = prompt('Please provide a reason for rejection:');
         if (reason) {
-            router.post(`/rentals/${id}/reject`, { rejected_reason: reason }, {
+            router.post(`/refills/${id}/reject`, { rejected_reason: reason }, {
                 onSuccess: () => {
                     alert('Refill request rejected successfully!');
                 }

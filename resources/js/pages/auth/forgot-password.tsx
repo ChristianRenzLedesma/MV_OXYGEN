@@ -18,11 +18,11 @@ export default function ForgotPassword({ status }: { status?: string }) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
-        post(route('password.email'));
+        post(route('password.otp.send'));
     };
 
     return (
-        <AuthLayout title="Forgot password" description="Enter your email to receive a password reset link">
+        <AuthLayout title="Forgot password" description="Enter your email to receive a password reset OTP">
             <Head title="Forgot password" />
 
             {status && <div className="mb-4 text-center text-sm font-medium text-green-600">{status}</div>}
@@ -48,7 +48,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                     <div className="my-6 flex items-center justify-start">
                         <Button className="w-full" disabled={processing}>
                             {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                            Email password reset link
+                            Send Password Reset OTP
                         </Button>
                     </div>
                 </form>

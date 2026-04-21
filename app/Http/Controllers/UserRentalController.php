@@ -66,6 +66,13 @@ class UserRentalController extends Controller
                 ->toArray();
         }
 
+        // Get available tank types from inventory
+        $tankTypes = \App\Models\Tank::where('status', 'available')
+            ->where('quantity', '>', 0)
+            ->pluck('tank_type')
+            ->unique()
+            ->values();
+
         return Inertia::render('user/rentals/create', [
             'breadcrumbs' => [
                 ['title' => 'Dashboard', 'href' => '/user/dashboard'],
@@ -73,6 +80,7 @@ class UserRentalController extends Controller
                 ['title' => 'New Request', 'href' => '/user/rentals/create']
             ],
             'approved_rental_requests' => $approvedRentalRequests,
+            'tankTypes' => $tankTypes,
             'auth' => [
                 'user' => Auth::user()
             ]

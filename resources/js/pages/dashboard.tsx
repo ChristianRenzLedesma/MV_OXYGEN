@@ -1,10 +1,38 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Users, Package, DollarSign, TrendingUp, ShoppingCart, AlertCircle, CheckCircle, Clock, User, Calendar, Phone, ArrowLeft, ArrowRight, Table, Activity } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+
+const useScrollAnimation = () => {
+    const [isVisible, setIsVisible] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setIsVisible(true);
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        if (ref.current) {
+            observer.observe(ref.current);
+        }
+
+        return () => {
+            if (ref.current) {
+                observer.unobserve(ref.current);
+            }
+        };
+    }, []);
+
+    return [ref, isVisible] as const;
+};
 
 interface RentalRequest {
     id: number;
@@ -48,6 +76,15 @@ interface Activity {
     created_at: string;
 }
 
+interface Tank {
+    id: number;
+    tank_id: string;
+    tank_type: string;
+    quantity: number;
+    last_refilled: string | null;
+    status: string;
+}
+
 interface Props {
     breadcrumbs?: BreadcrumbItem[];
     activities?: Activity[];
@@ -64,6 +101,7 @@ interface Props {
         hasNext: boolean;
         hasPrev: boolean;
     };
+    tanks?: Tank[];
 }
 
 export default function Dashboard({
@@ -71,15 +109,22 @@ export default function Dashboard({
     activities: initialActivities = [],
     rentalStats: initialRentalStats = { pending: 0, approved: 0, rejected: 0, completed: 0 },
     pendingRentalRequests = [],
-    rentalPagination = { currentPage: 1, totalPages: 1, hasNext: false, hasPrev: false }
+    rentalPagination = { currentPage: 1, totalPages: 1, hasNext: false, hasPrev: false },
+    tanks = []
 }: Props) {
     const [activeTab, setActiveTab] = useState('inventory');
     const [activityFilter, setActivityFilter] = useState<'latest' | 'recent'>('latest');
     const [statsPeriod, setStatsPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+    const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7)); // YYYY-MM format
     const [activities, setActivities] = useState<Activity[]>(initialActivities);
     const [rentalStats, setRentalStats] = useState(initialRentalStats);
     const [activityPage, setActivityPage] = useState(1);
     const itemsPerPage = 5;
+
+    const [headerRef, headerVisible] = useScrollAnimation();
+    const [chartRef, chartVisible] = useScrollAnimation();
+    const [activityRef, activityVisible] = useScrollAnimation();
+    const [tankRef, tankVisible] = useScrollAnimation();
 
     // Filter activities based on filter
     const filteredActivities = activities.filter(activity => {
@@ -128,6 +173,9 @@ export default function Dashboard({
     useEffect(() => {
         const url = new URL(window.location.href);
         url.searchParams.set('period', statsPeriod);
+        if (statsPeriod === 'monthly') {
+            url.searchParams.set('month', selectedMonth);
+        }
         router.get(url.pathname + url.search, {}, {
             preserveState: true,
             onSuccess: (page: any) => {
@@ -136,7 +184,7 @@ export default function Dashboard({
                 }
             }
         });
-    }, [statsPeriod]);
+    }, [statsPeriod, selectedMonth]);
     const handleApprove = (id: number) => {
         if (confirm('Are you sure you want to approve this rental request?')) {
             router.post(`/rentals/${id}/approve`, {}, {
@@ -179,20 +227,31 @@ export default function Dashboard({
                     <Breadcrumbs breadcrumbs={breadcrumbs} />
                 </div>
                 {/* Header */}
-                <div className="mb-8">
+                <div ref={headerRef} className={`mb-8 ${headerVisible ? 'animate-in fade-in slide-in-from-bottom-4 duration-1000' : 'opacity-0'}`}>
                     <h1 className="text-3xl font-bold text-gray-800 mb-2">Admin Dashboard</h1>
                     <p className="text-gray-600">Welcome to MV Oxygen Trading Management System</p>
                 </div>
 
                 {/* Chart Section */}
-                <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <div ref={chartRef} className={`bg-white rounded-xl shadow-lg p-6 mb-8 ${chartVisible ? 'animate-in fade-in slide-in-from-bottom-4 duration-1000' : 'opacity-0'}`}>
                     <div className="flex justify-between items-center mb-4">
                         <div>
                             <h2 className="text-xl font-bold text-gray-800">Rental Request Statistics</h2>
                             {statsPeriod === 'monthly' && (
-                                <p className="text-sm text-gray-500 mt-1">
-                                    {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <p className="text-sm text-gray-500">
+                                        {new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                                    </p>
+                                    <div className="relative">
+                                        <input
+                                            type="month"
+                                            value={selectedMonth}
+                                            onChange={(e) => setSelectedMonth(e.target.value)}
+                                            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer bg-white hover:bg-gray-50 transition-colors"
+                                        />
+                                        <Calendar className="w-4 h-4 absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </div>
                             )}
                         </div>
                         <div className="flex space-x-2">
@@ -265,7 +324,7 @@ export default function Dashboard({
                 </div>
 
                 {/* Activity Feed */}
-                <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <div ref={activityRef} className={`bg-white rounded-xl shadow-lg p-6 mb-8 ${activityVisible ? 'animate-in fade-in slide-in-from-bottom-4 duration-1000' : 'opacity-0'}`}>
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                             <Activity className="w-5 h-5" />
@@ -360,7 +419,7 @@ export default function Dashboard({
                 </div>
 
                 {/* Tank Inventory with Tabs */}
-                <div className="bg-white rounded-xl shadow-lg p-6">
+                <div ref={tankRef} className={`bg-white rounded-xl shadow-lg p-6 ${tankVisible ? 'animate-in fade-in slide-in-from-bottom-4 duration-1000' : 'opacity-0'}`}>
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-xl font-bold text-gray-800">Tank Management</h2>
                         <div className="flex space-x-1">
@@ -397,53 +456,39 @@ export default function Dashboard({
                                     <tr className="border-b border-gray-200">
                                         <th className="text-left py-3 px-4 font-semibold text-gray-700">Tank ID</th>
                                         <th className="text-left py-3 px-4 font-semibold text-gray-700">Tank Type</th>
-                                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Capacity</th>
-                                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Pressure</th>
-                                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Last Inspection</th>
+                                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Quantity</th>
+                                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Last Refilled</th>
                                         <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
-                                        <td className="py-3 px-4 text-gray-800">ARG-001</td>
-                                        <td className="py-3 px-4 text-gray-800">Argon Tank</td>
-                                        <td className="py-3 px-4 text-gray-800">50L</td>
-                                        <td className="py-3 px-4 text-gray-800">200 bar</td>
-                                        <td className="py-3 px-4 text-gray-600">2024-04-01</td>
-                                        <td className="py-3 px-4">
-                                            <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Available</span>
-                                        </td>
-                                    </tr>
-                                    <tr className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
-                                        <td className="py-3 px-4 text-gray-800">MED-002</td>
-                                        <td className="py-3 px-4 text-gray-800">Medical Oxygen</td>
-                                        <td className="py-3 px-4 text-gray-800">10L</td>
-                                        <td className="py-3 px-4 text-gray-800">180 bar</td>
-                                        <td className="py-3 px-4 text-gray-600">2024-04-03</td>
-                                        <td className="py-3 px-4">
-                                            <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Available</span>
-                                        </td>
-                                    </tr>
-                                    <tr className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
-                                        <td className="py-3 px-4 text-gray-800">FLS-004</td>
-                                        <td className="py-3 px-4 text-gray-800">Flask Type Tank</td>
-                                        <td className="py-3 px-4 text-gray-800">10L</td>
-                                        <td className="py-3 px-4 text-gray-800">200 bar</td>
-                                        <td className="py-3 px-4 text-gray-600">2024-04-02</td>
-                                        <td className="py-3 px-4">
-                                            <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Maintenance</span>
-                                        </td>
-                                    </tr>
-                                    <tr className="hover:bg-gray-50 cursor-pointer">
-                                        <td className="py-3 px-4 text-gray-800">IND-006</td>
-                                        <td className="py-3 px-4 text-gray-800">Industrial Oxygen</td>
-                                        <td className="py-3 px-4 text-gray-800">100L</td>
-                                        <td className="py-3 px-4 text-gray-800">250 bar</td>
-                                        <td className="py-3 px-4 text-gray-600">2024-04-04</td>
-                                        <td className="py-3 px-4">
-                                            <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Refilling</span>
-                                        </td>
-                                    </tr>
+                                    {tanks.length > 0 ? (
+                                        tanks.map((tank) => (
+                                            <tr key={tank.id} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+                                                <td className="py-3 px-4 text-gray-800">{tank.tank_id}</td>
+                                                <td className="py-3 px-4 text-gray-800">{tank.tank_type}</td>
+                                                <td className="py-3 px-4 text-gray-800">{tank.quantity}</td>
+                                                <td className="py-3 px-4 text-gray-600">{tank.last_refilled ? new Date(tank.last_refilled).toLocaleDateString() : 'N/A'}</td>
+                                                <td className="py-3 px-4">
+                                                    <span className={`px-2 py-1 text-xs rounded-full ${
+                                                        tank.status === 'available' ? 'bg-green-100 text-green-800' :
+                                                        tank.status === 'rented_out' ? 'bg-blue-100 text-blue-800' :
+                                                        tank.status === 'maintenance' ? 'bg-red-100 text-red-800' :
+                                                        'bg-gray-100 text-gray-800'
+                                                    }`}>
+                                                        {tank.status.charAt(0).toUpperCase() + tank.status.slice(1).replace('_', ' ')}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={5} className="py-8 text-center text-gray-500">
+                                                <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                                                <p>No tanks found in inventory.</p>
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>

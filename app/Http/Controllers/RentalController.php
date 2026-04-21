@@ -15,6 +15,7 @@ class RentalController extends Controller
     public function index()
     {
         $rentalRequests = RentalRequest::with(['customer', 'product'])
+            ->where('request_type', '!=', 'refill')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -26,63 +27,7 @@ class RentalController extends Controller
         ]);
     }
 
-    public function refills()
-    {
-        $rentalRequests = RentalRequest::with(['customer', 'product'])
-            ->where('request_type', 'refill')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return Inertia::render('refills/index', [
-            'rentalRequests' => $rentalRequests,
-            'auth' => [
-                'user' => auth()->user()
-            ]
-        ]);
-    }
-
-    public function storeRefill(Request $request)
-    {
-        $request->validate([
-            'customer_id' => 'required|exists:customers,id',
-            'tank_type' => 'required|string|max:255',
-            'refill_period' => 'required|string|max:100',
-            'refill_cost' => 'required|numeric|min:0'
-        ]);
-
-        $customer = Customer::findOrFail($request->customer_id);
-
-        $rentalRequest = RentalRequest::create([
-            'customer_id' => $customer->id,
-            'request_type' => 'refill',
-            'product_id' => null,
-            'tank_type' => $request->tank_type,
-            'quantity' => 1,
-            'start_date' => now()->addDay()->format('Y-m-d'),
-            'end_date' => now()->addDays(7)->format('Y-m-d'),
-            'purpose' => "Refill period: {$request->refill_period}",
-            'contact_number' => $customer->contact_number ?? 'N/A',
-            'address' => $customer->address ?? 'N/A',
-            'status' => 'pending',
-            'admin_notes' => null,
-            'rejected_reason' => null
-        ]);
-
-        // Log activity
-        $admin = auth()->user();
-        \App\Models\Activity::create([
-            'user_id' => $admin->id,
-            'customer_id' => $customer->id,
-            'rental_request_id' => $rentalRequest->id,
-            'action' => 'refill_created',
-            'description' => "Admin {$admin->name} created a refill oxygen customer request for {$request->tank_type} for {$customer->name}",
-            'type' => 'info',
-        ]);
-
-        return redirect()->route('refills.index')->with('success', 'Refill request created successfully!');
-    }
-
-    public function approve(RentalRequest $rentalRequest)
+    public function approve(RentalRequest $rentalRequest, Request $request)
     {
         \Log::info('Approving rental request: ' . $rentalRequest->id . ' with status: ' . $rentalRequest->status);
 
@@ -91,18 +36,16 @@ class RentalController extends Controller
 
         // Log activity
         $admin = auth()->user();
-        $action = $rentalRequest->request_type === 'refill' ? 'refill_approved' : 'rental_approved';
-        $requestType = $rentalRequest->request_type === 'refill' ? 'refill oxygen customer' : 'rental';
         \App\Models\Activity::create([
             'user_id' => $admin->id,
             'customer_id' => $rentalRequest->customer_id,
             'rental_request_id' => $rentalRequest->id,
-            'action' => $action,
-            'description' => "Admin {$admin->name} approved {$requestType} request for {$rentalRequest->tank_type} from {$rentalRequest->customer->name}",
+            'action' => 'rental_approved',
+            'description' => "Admin {$admin->name} approved rental request for {$rentalRequest->tank_type} from {$rentalRequest->customer->name}",
             'type' => 'success',
         ]);
 
-        // Create rental record
+        // Create rental record with deposit information
         $rentalData = [
             'rental_request_id' => $rentalRequest->id,
             'customer_id' => $rentalRequest->customer_id,
@@ -111,20 +54,47 @@ class RentalController extends Controller
             'end_date' => $rentalRequest->end_date,
             'status' => 'active',
             'pickup_date' => now(),
+            'deposit_type' => 'Security Deposit',
+            'deposit_amount' => 0,
+            'deposit_payment_date' => now(),
+            'deposit_status' => 'pending',
         ];
+
+        // Add deposit information if provided
+        if ($request->has('deposit_amount') && $request->deposit_amount) {
+            $rentalData['deposit_amount'] = $request->deposit_amount;
+            $rentalData['deposit_payment_method'] = $request->deposit_payment_method ?? 'cash';
+            $rentalData['deposit_payment_date'] = now();
+            $rentalData['deposit_status'] = 'paid';
+            $rentalData['deposit_reference_number'] = $request->deposit_reference_number;
+        }
 
         // Create transaction record
         \App\Models\Transaction::create([
             'customer_id' => $rentalRequest->customer_id,
             'tank_id' => $rentalRequest->tank_type,
-            'transaction_type' => $rentalRequest->request_type === 'refill' ? 'Refill' : 'Rent',
+            'transaction_type' => 'Rent',
             'transaction_date' => now(),
         ]);
-        
+
         \Log::info('Creating rental with data: ', $rentalData);
-        
+
         $rental = Rental::create($rentalData);
         \Log::info('Created rental record: ' . $rental->id . ' with status: ' . $rental->status);
+
+        // Create deposit record if deposit information is provided
+        if ($request->has('deposit_amount') && $request->deposit_amount) {
+            \App\Models\Deposit::create([
+                'rental_id' => $rental->id,
+                'customer_id' => $rentalRequest->customer_id,
+                'amount' => $request->deposit_amount,
+                'payment_method' => $request->deposit_payment_method ?? 'cash',
+                'reference_number' => $request->deposit_reference_number,
+                'status' => 'paid',
+                'payment_date' => now(),
+                'notes' => $request->notes,
+            ]);
+        }
 
         // Send notification to customer
         try {
@@ -166,9 +136,7 @@ class RentalController extends Controller
     {
         $rentalRequest->load(['customer', 'product', 'rental']);
 
-        $view = $rentalRequest->request_type === 'refill' ? 'refills/show' : 'rentals/show';
-
-        return Inertia::render($view, [
+        return Inertia::render('rentals/show', [
             'rentalRequest' => $rentalRequest,
             'auth' => [
                 'user' => auth()->user()

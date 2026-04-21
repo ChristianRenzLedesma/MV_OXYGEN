@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Otp;
+use App\Services\OtpService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
@@ -15,6 +17,13 @@ use Inertia\Response;
 
 class OtpController extends Controller
 {
+    protected $otpService;
+
+    public function __construct(OtpService $otpService)
+    {
+        $this->otpService = $otpService;
+    }
+
     /**
      * Generate and send OTP to user email
      */
@@ -88,5 +97,58 @@ class OtpController extends Controller
     public function resend(Request $request)
     {
         return $this->send($request);
+    }
+
+    /**
+     * Send password reset OTP to user email
+     */
+    public function sendPasswordResetOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email'
+        ]);
+
+        $user = $this->otpService->getUserByEmail($request->email);
+
+        if (!$user) {
+            return back()->withErrors(['email' => 'No account found with this email address.']);
+        }
+
+        $otp = $this->otpService->generateAndSendOtp($user);
+
+        return Inertia::render('auth/forgot-password-otp', [
+            'email' => $request->email,
+            'success' => 'OTP has been sent to your email address. Please check your inbox.',
+            'expires_at' => $otp->expires_at->format('Y-m-d H:i:s')
+        ]);
+    }
+
+    /**
+     * Verify password reset OTP
+     */
+    public function verifyPasswordResetOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|string|size:6'
+        ]);
+
+        $otp = $this->otpService->validateOtp($request->email, $request->otp);
+
+        if (!$otp) {
+            return back()->withErrors(['otp' => 'Invalid or expired OTP code.']);
+        }
+
+        // Mark OTP as used
+        $this->otpService->markOtpAsUsed($otp);
+
+        // Generate a token for password reset
+        $token = Str::random(60);
+
+        // Store the token in cache with the email
+        Cache::put("password_reset_{$token}", $request->email, now()->addMinutes(60));
+
+        // Redirect to password reset form with token
+        return redirect()->route('password.reset', ['token' => $token]);
     }
 }

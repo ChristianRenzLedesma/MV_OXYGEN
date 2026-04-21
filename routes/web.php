@@ -4,9 +4,13 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\RentalController;
+use App\Http\Controllers\RefillController;
 use App\Http\Controllers\UserDashboardController;
 use App\Http\Controllers\UserRentalController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\DepositController;
+use App\Http\Controllers\InventoryController;
 
 Route::get('/', function () {
     return Inertia::render('welcome');
@@ -47,6 +51,7 @@ Route::middleware(['auth'])->group(function () {
         $page = request()->get('rental_page', 1);
         $perPage = 2;
         $period = request()->get('period', 'daily');
+        $month = request()->get('month', null); // Format: YYYY-MM
 
         // Fetch latest activities
         $activities = \App\Models\Activity::with(['user', 'customer', 'rentalRequest'])
@@ -54,33 +59,31 @@ Route::middleware(['auth'])->group(function () {
             ->limit(20)
             ->get();
 
-        // Determine date range based on period
-        $startDate = now();
+        // Calculate rental statistics based on period
+        $query = \App\Models\RentalRequest::query();
+
         switch ($period) {
             case 'daily':
-                $startDate = now()->startOfDay();
+                $query->whereDate('created_at', today());
                 break;
             case 'weekly':
-                $startDate = now()->subDays(7)->startOfDay();
+                $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
                 break;
             case 'monthly':
-                $startDate = now()->startOfMonth();
+                if ($month) {
+                    $query->whereYear('created_at', substr($month, 0, 4))
+                          ->whereMonth('created_at', substr($month, 5, 2));
+                } else {
+                    $query->whereMonth('created_at', now()->month)
+                          ->whereYear('created_at', now()->year);
+                }
                 break;
         }
 
-        // Fetch rental request status counts based on period
-        $pendingCount = \App\Models\RentalRequest::where('status', 'pending')
-            ->where('created_at', '>=', $startDate)
-            ->count();
-        $approvedCount = \App\Models\RentalRequest::where('status', 'approved')
-            ->where('created_at', '>=', $startDate)
-            ->count();
-        $rejectedCount = \App\Models\RentalRequest::where('status', 'rejected')
-            ->where('created_at', '>=', $startDate)
-            ->count();
-        $completedCount = \App\Models\RentalRequest::where('status', 'completed')
-            ->where('created_at', '>=', $startDate)
-            ->count();
+        $pendingCount = (clone $query)->where('status', 'pending')->count();
+        $approvedCount = (clone $query)->where('status', 'approved')->count();
+        $rejectedCount = (clone $query)->where('status', 'rejected')->count();
+        $completedCount = (clone $query)->where('status', 'completed')->count();
 
         $pendingRentalRequestsQuery = \App\Models\RentalRequest::with(['customer'])
             ->where('status', 'pending')
@@ -110,6 +113,7 @@ Route::middleware(['auth'])->group(function () {
                 'hasNext' => $page < ceil($totalPending / $perPage),
                 'hasPrev' => $page > 1
             ],
+            'tanks' => \App\Models\Tank::orderBy('tank_type')->get(),
             'auth' => [
                 'user' => auth()->user()
             ]
@@ -130,10 +134,37 @@ Route::middleware(['auth'])->group(function () {
     
     // Rental Routes
     Route::get('rentals', [RentalController::class, 'index'])->name('rentals.index');
-    Route::get('refills', [RentalController::class, 'refills'])->name('refills.index');
-    Route::get('refills/{rentalRequest}', [RentalController::class, 'show'])->name('refills.show');
     Route::get('rentals/{rentalRequest}', [RentalController::class, 'show'])->name('rentals.show');
-    Route::post('refills', [RentalController::class, 'storeRefill'])->name('refills.store');
+
+    // Refill Routes
+    Route::get('refills', [RefillController::class, 'index'])->name('refills.index');
+    Route::get('refills/{rentalRequest}', [RefillController::class, 'show'])->name('refills.show');
+    Route::post('refills', [RefillController::class, 'store'])->name('refills.store');
+    Route::post('refills/{rentalRequest}/approve', [RefillController::class, 'approve'])->name('refills.approve');
+    Route::post('refills/{rentalRequest}/reject', [RefillController::class, 'reject'])->name('refills.reject');
+    Route::post('refills/{rentalRequest}/return', [RefillController::class, 'markAsReturned'])->name('refills.return');
+    Route::put('refills/{rentalRequest}/notes', [RefillController::class, 'updateNotes'])->name('refills.update-notes');
+
+    // Supplier Routes
+    Route::get('suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
+    Route::get('suppliers/create', [SupplierController::class, 'create'])->name('suppliers.create');
+    Route::post('suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
+    Route::get('suppliers/{supplier}/edit', [SupplierController::class, 'edit'])->name('suppliers.edit');
+    Route::put('suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
+    Route::delete('suppliers/{supplier}', [SupplierController::class, 'destroy'])->name('suppliers.destroy');
+
+    // Deposit Routes
+    Route::post('deposits', [DepositController::class, 'store'])->name('deposits.store');
+    Route::put('deposits/{deposit}', [DepositController::class, 'update'])->name('deposits.update');
+    Route::delete('deposits/{deposit}', [DepositController::class, 'destroy'])->name('deposits.destroy');
+    Route::post('rentals/{rental}/deposit', [DepositController::class, 'updateRentalDeposit'])->name('rentals.deposit.update');
+
+    // Inventory Routes
+    Route::get('inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::post('inventory', [InventoryController::class, 'store'])->name('inventory.store');
+    Route::post('inventory/maintenance', [InventoryController::class, 'storeMaintenance'])->name('inventory.maintenance.store');
+
+    // Rental Routes (Approve, Reject, etc.)
     Route::post('rentals/{rentalRequest}/approve', [RentalController::class, 'approve'])->name('rentals.approve');
     Route::post('rentals/{rentalRequest}/reject', [RentalController::class, 'reject'])->name('rentals.reject');
     Route::post('rentals/{rentalRequest}/cancel', [RentalController::class, 'cancel'])->name('rentals.cancel');

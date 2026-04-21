@@ -8,13 +8,15 @@ import { useState } from 'react';
 interface Props {
     breadcrumbs?: BreadcrumbItem[];
     approved_rental_requests?: string[];
+    tankTypes?: string[];
 }
 
-export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard', href: '/user/dashboard' }], approved_rental_requests = [] }: Props) {
+export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard', href: '/user/dashboard' }], approved_rental_requests = [], tankTypes = [] }: Props) {
     const [formData, setFormData] = useState({
         request_type: 'rental',
         tank_type: '',
         purpose: '',
+        purpose_other: '',
         contact_number: '',
         address: '',
         pickup_type: 'delivery'
@@ -30,6 +32,9 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
         if (submitData.pickup_type === 'pickup') {
             delete submitData.address;
         }
+
+        // Combine purpose and purpose_other if "Others" is selected
+        submitData.purpose = submitData.purpose === 'Others' ? submitData.purpose_other : submitData.purpose;
 
         router.post('/user/rentals', submitData, {
             onError: (errors) => {
@@ -51,6 +56,22 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
         if (field === 'request_type') {
             setFormData(prev => ({ ...prev, tank_type: '' }));
         }
+
+        // Auto-fill purpose when tank type changes
+        if (field === 'tank_type') {
+            setFormData(prev => ({
+                ...prev,
+                purpose: getAutoPurpose(value as string),
+                purpose_other: ''
+            }));
+        }
+    };
+
+    const handleTextAreaChange = (field: string, value: string) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        if (errors[field]) {
+            setErrors(prev => ({ ...prev, [field]: '' }));
+        }
     };
 
     const breadcrumbsWithCreate: BreadcrumbItem[] = [
@@ -58,24 +79,27 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
         { title: 'New Rental Request', href: '/user/rentals/create' }
     ];
 
-    const allTankTypes = [
-        { name: 'Argon Small', price: 1100 },
-        { name: 'Argon Big', price: 2200 },
-        { name: 'Nitro', price: 800 },
-        { name: 'Medical Oxygen Big', price: 550 },
-        { name: 'Medical Oxygen Medium', price: 500 },
-        { name: 'Flask Type Standard', price: 350 },
-        { name: 'Flask Type Small', price: 300 },
-        { name: 'Industrial Oxygen', price: 550 },
-        { name: 'Acetylene', price: 1700 }
-    ];
-
     // Filter tank types based on request type
-    const tankTypes = formData.request_type === 'refill'
-        ? allTankTypes.filter(tank => approved_rental_requests.includes(tank.name))
-        : allTankTypes;
+    const availableTankTypes = formData.request_type === 'refill'
+        ? tankTypes.filter(type => approved_rental_requests.includes(type))
+        : tankTypes;
 
-    const selectedTank = tankTypes.find(t => t.name === formData.tank_type);
+    const getAutoPurpose = (tankType: string): string => {
+        const lowerTankType = tankType.toLowerCase();
+        if (lowerTankType.includes('medical') || lowerTankType.includes('oxygen')) {
+            return 'Medical Use';
+        } else if (lowerTankType.includes('industrial')) {
+            return 'Industrial Use';
+        } else if (lowerTankType.includes('welding') || lowerTankType.includes('argon') || lowerTankType.includes('acetylene')) {
+            return 'Welding';
+        } else if (lowerTankType.includes('construction')) {
+            return 'Construction';
+        } else if (lowerTankType.includes('laboratory') || lowerTankType.includes('nitro')) {
+            return 'Laboratory';
+        } else {
+            return 'Others';
+        }
+    };
 
     return (
         <AppLayout>
@@ -141,15 +165,10 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
                                 required
                             >
                                 <option value="">Select tank type</option>
-                                {tankTypes.map(type => (
-                                    <option key={type.name} value={type.name}>{type.name} - ₱{type.price}</option>
+                                {availableTankTypes.map(type => (
+                                    <option key={type} value={type}>{type}</option>
                                 ))}
                             </select>
-                            {selectedTank && (
-                                <p className="mt-2 text-sm text-green-600 font-medium">
-                                    Price: ₱{selectedTank.price}
-                                </p>
-                            )}
                             {errors.tank_type && (
                                 <p className="mt-1 text-sm text-red-600">{errors.tank_type}</p>
                             )}
@@ -194,20 +213,49 @@ export default function RentalRequestCreate({ breadcrumbs = [{ title: 'Dashboard
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Purpose *
                             </label>
-                            <textarea
+                            <select
                                 value={formData.purpose}
                                 onChange={(e) => handleChange('purpose', e.target.value)}
-                                rows={3}
                                 className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                                     errors.purpose ? 'border-red-500' : 'border-gray-300'
                                 }`}
-                                placeholder="Please describe the purpose of your rental request..."
                                 required
-                            />
+                            >
+                                <option value="">Select Purpose</option>
+                                <option value="Medical Use">Medical Use</option>
+                                <option value="Industrial Use">Industrial Use</option>
+                                <option value="Construction">Construction</option>
+                                <option value="Welding">Welding</option>
+                                <option value="Laboratory">Laboratory</option>
+                                <option value="Emergency">Emergency</option>
+                                <option value="Others">Others</option>
+                            </select>
                             {errors.purpose && (
                                 <p className="mt-1 text-sm text-red-600">{errors.purpose}</p>
                             )}
                         </div>
+
+                        {/* Purpose Other - Only show when Others is selected */}
+                        {formData.purpose === 'Others' && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Please Specify *
+                                </label>
+                                <textarea
+                                    value={formData.purpose_other}
+                                    onChange={(e) => handleTextAreaChange('purpose_other', e.target.value)}
+                                    rows={3}
+                                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                    errors.purpose_other ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                                    placeholder="Please describe the purpose of your rental request..."
+                                    required
+                                />
+                                {errors.purpose_other && (
+                                    <p className="mt-1 text-sm text-red-600">{errors.purpose_other}</p>
+                                )}
+                            </div>
+                        )}
 
                         {/* Contact Information */}
                         <div>

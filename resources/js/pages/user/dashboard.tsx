@@ -4,8 +4,36 @@ import { Head, router } from '@inertiajs/react';
 import { Package, Calendar, CheckCircle, AlertCircle, Clock, PlusCircle, History, TrendingUp, MapPin, X, DollarSign } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import DeliveryTrackingMap from '@/components/delivery-tracking-map';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+
+const useScrollAnimation = () => {
+    const [isVisible, setIsVisible] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setIsVisible(true);
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        if (ref.current) {
+            observer.observe(ref.current);
+        }
+
+        return () => {
+            if (ref.current) {
+                observer.unobserve(ref.current);
+            }
+        };
+    }, []);
+
+    return [ref, isVisible] as const;
+};
 
 interface RentalRequest {
     id: number;
@@ -57,6 +85,7 @@ interface Props {
     rentalRequests: RentalRequest[];
     activeRentals: ActiveRental[];
     stats: Stats;
+    tankTypes: string[];
     auth: {
         user: {
             id: number;
@@ -67,7 +96,7 @@ interface Props {
     };
 }
 
-export default function UserDashboard({ breadcrumbs = [{ title: 'Dashboard', href: '/user/dashboard' }], rentalRequests, activeRentals, stats, auth }: Props) {
+export default function UserDashboard({ breadcrumbs = [{ title: 'Dashboard', href: '/user/dashboard' }], rentalRequests, activeRentals, stats, tankTypes, auth }: Props) {
     const getStatusBadge = (status: string) => {
         const badges = {
             pending: 'bg-yellow-100 text-yellow-800',
@@ -85,10 +114,34 @@ export default function UserDashboard({ breadcrumbs = [{ title: 'Dashboard', hre
         request_type: 'rental',
         tank_type: '',
         purpose: '',
+        purpose_other: '',
         contact_number: '',
         address: '',
         pickup_type: 'delivery'
     });
+
+    const [headerRef, headerVisible] = useScrollAnimation();
+    const [statsRef, statsVisible] = useScrollAnimation();
+    const [quickActionsRef, quickActionsVisible] = useScrollAnimation();
+    const [activeRentalsRef, activeRentalsVisible] = useScrollAnimation();
+    const [rentalHistoryRef, rentalHistoryVisible] = useScrollAnimation();
+
+    const getAutoPurpose = (tankType: string): string => {
+        const lowerTankType = tankType.toLowerCase();
+        if (lowerTankType.includes('medical') || lowerTankType.includes('oxygen')) {
+            return 'Medical Use';
+        } else if (lowerTankType.includes('industrial')) {
+            return 'Industrial Use';
+        } else if (lowerTankType.includes('welding') || lowerTankType.includes('argon') || lowerTankType.includes('acetylene')) {
+            return 'Welding';
+        } else if (lowerTankType.includes('construction')) {
+            return 'Construction';
+        } else if (lowerTankType.includes('laboratory') || lowerTankType.includes('nitro')) {
+            return 'Laboratory';
+        } else {
+            return 'Others';
+        }
+    };
 
     const handleCreateRequest = () => {
         setShowCreateModal(true);
@@ -100,25 +153,38 @@ export default function UserDashboard({ breadcrumbs = [{ title: 'Dashboard', hre
             request_type: 'rental',
             tank_type: '',
             purpose: '',
+            purpose_other: '',
             contact_number: '',
             address: '',
             pickup_type: 'delivery'
         });
     };
 
-    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
 
-        // Clear address when switching to pickup
-        if (name === 'pickup_type' && value === 'pickup') {
-            setFormData(prev => ({ ...prev, address: '' }));
+        if (name === 'tank_type' && value !== formData.tank_type) {
+            setFormData(prev => ({
+                ...prev,
+                contact_number: '',
+                address: '',
+                purpose: getAutoPurpose(value),
+                purpose_other: ''
+            }));
         }
     };
 
     const handleSubmitRequest = (e: React.FormEvent) => {
         e.preventDefault();
-        router.post('/user/rentals', formData, {
+
+        // Combine purpose and purpose_other if "Others" is selected
+        const submitData = {
+            ...formData,
+            purpose: formData.purpose === 'Others' ? formData.purpose_other : formData.purpose
+        };
+
+        router.post('/user/rentals', submitData, {
             onSuccess: () => {
                 handleCloseModal();
                 setShowSuccessModal(true);
@@ -139,13 +205,13 @@ export default function UserDashboard({ breadcrumbs = [{ title: 'Dashboard', hre
                     </div>
 
                     {/* Header */}
-                    <div className="mb-8">
+                    <div ref={headerRef} className={`mb-8 ${headerVisible ? 'animate-in fade-in slide-in-from-bottom-4 duration-1000' : 'opacity-0'}`}>
                         <h1 className="text-3xl font-bold text-foreground mb-2">Welcome back, {auth.user.name}!</h1>
                         <p className="text-muted-foreground">Welcome to MV Oxygen Trading - Manage your rentals</p>
                     </div>
 
                     {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div ref={statsRef} className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 ${statsVisible ? 'animate-in fade-in slide-in-from-bottom-4 duration-1000' : 'opacity-0'}`}>
                     <div className="bg-card rounded-xl shadow-lg p-6 border-l-4 border-yellow-500 dark:shadow-xl dark:border-yellow-400">
                         <div className="flex items-center justify-between">
                             <div>
@@ -196,7 +262,7 @@ export default function UserDashboard({ breadcrumbs = [{ title: 'Dashboard', hre
                 </div>
 
                 {/* Quick Actions */}
-                <div className="bg-card rounded-xl shadow-lg p-6 mb-8 dark:shadow-xl">
+                <div ref={quickActionsRef} className={`bg-card rounded-xl shadow-lg p-6 mb-8 dark:shadow-xl ${quickActionsVisible ? 'animate-in fade-in slide-in-from-bottom-4 duration-1000' : 'opacity-0'}`}>
                     <h2 className="text-xl font-bold text-foreground mb-4">Quick Actions</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <a
@@ -218,7 +284,7 @@ export default function UserDashboard({ breadcrumbs = [{ title: 'Dashboard', hre
 
                 {/* Active Rentals */}
                 {activeRentals.length > 0 && (
-                    <div className="bg-card rounded-xl shadow-lg p-6 mb-8 dark:shadow-xl">
+                    <div ref={activeRentalsRef} className={`bg-card rounded-xl shadow-lg p-6 mb-8 dark:shadow-xl ${activeRentalsVisible ? 'animate-in fade-in slide-in-from-bottom-4 duration-1000' : 'opacity-0'}`}>
                         <h2 className="text-xl font-bold text-foreground mb-4 flex items-center">
                             <Package className="w-5 h-5 mr-2 text-green-600" />
                             Active Rentals
@@ -311,7 +377,7 @@ export default function UserDashboard({ breadcrumbs = [{ title: 'Dashboard', hre
                 )}
 
                 {/* Rental History */}
-                <div className="bg-card rounded-xl shadow-lg p-6 dark:shadow-xl">
+                <div ref={rentalHistoryRef} className={`bg-card rounded-xl shadow-lg p-6 dark:shadow-xl ${rentalHistoryVisible ? 'animate-in fade-in slide-in-from-bottom-4 duration-1000' : 'opacity-0'}`}>
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-xl font-bold text-foreground flex items-center">
                             <History className="w-5 h-5 mr-2 text-purple-600" />
@@ -436,25 +502,46 @@ export default function UserDashboard({ breadcrumbs = [{ title: 'Dashboard', hre
                                     required
                                 >
                                     <option value="">Select Tank Type</option>
-                                    <option value="Medical Oxygen">Medical Oxygen</option>
-                                    <option value="Industrial Oxygen">Industrial Oxygen</option>
-                                    <option value="Argon">Argon</option>
-                                    <option value="Nitrogen">Nitrogen</option>
+                                    {tankTypes.map((type) => (
+                                        <option key={type} value={type}>{type}</option>
+                                    ))}
                                 </select>
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
-                                <textarea
+                                <select
                                     name="purpose"
                                     value={formData.purpose}
                                     onChange={handleFormChange}
-                                    placeholder="Describe the purpose of your request"
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    rows={3}
                                     required
-                                />
+                                >
+                                    <option value="">Select Purpose</option>
+                                    <option value="Medical Use">Medical Use</option>
+                                    <option value="Industrial Use">Industrial Use</option>
+                                    <option value="Construction">Construction</option>
+                                    <option value="Welding">Welding</option>
+                                    <option value="Laboratory">Laboratory</option>
+                                    <option value="Emergency">Emergency</option>
+                                    <option value="Others">Others</option>
+                                </select>
                             </div>
+
+                            {formData.purpose === 'Others' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Please Specify</label>
+                                    <textarea
+                                        name="purpose_other"
+                                        value={formData.purpose_other}
+                                        onChange={handleFormChange}
+                                        placeholder="Describe the purpose of your request"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        rows={3}
+                                        required
+                                    />
+                                </div>
+                            )}
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>

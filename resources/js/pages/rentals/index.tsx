@@ -26,6 +26,7 @@ interface RentalRequest {
     admin_notes?: string;
     rejected_reason?: string;
     created_at: string;
+    request_type?: string;
 }
 
 interface Props {
@@ -193,7 +194,7 @@ export default function RentalIndex({ rentalRequests }: Props) {
                                         <td className="py-3 px-4">
                                             <div className="flex space-x-2">
                                                 <a
-                                                    href={`/rentals/${request.id}`}
+                                                    href={request.request_type === 'refill' ? `/refills/${request.id}` : `/rentals/${request.id}`}
                                                     className="text-blue-600 hover:text-blue-800"
                                                     title="View Details"
                                                 >
