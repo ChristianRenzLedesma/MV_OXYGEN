@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { User, Mail, Phone, MapPin, Bell, Shield, Palette, Globe } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Shield } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
 import { router } from '@inertiajs/react';
 import { useAppearance } from '@/hooks/use-appearance';
@@ -19,6 +19,7 @@ interface UserProfile {
     role: string;
     contact_number?: string;
     address?: string;
+    profile_image?: string;
     email_verified_at?: string;
     created_at: string;
     updated_at: string;
@@ -42,7 +43,7 @@ export default function UserSettings() {
     const { props } = usePage<PageProps>();
     const { user, breadcrumbs, auth } = props;
     const { appearance, updateAppearance } = useAppearance();
-    
+
     // Get flash messages from Inertia
     const flash = usePage().props.flash as any;
     const [successMessage, setSuccessMessage] = React.useState(flash?.success || '');
@@ -62,27 +63,19 @@ export default function UserSettings() {
         email: user.email || '',
         contact_number: user.contact_number || '',
         address: user.address || '',
-    });
-
-    const [notifications, setNotifications] = React.useState({
-        email_notifications: true,
-        push_notifications: false,
-        sms_notifications: true,
-    });
-
-    const [preferences, setPreferences] = React.useState({
-        theme: appearance,
-        language: 'en',
-        timezone: 'Asia/Manila',
+        profile_image: null as File | null,
     });
 
     const handleProfileUpdate = (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         const data = new FormData();
         data.append('name', formData.name);
         data.append('contact_number', formData.contact_number);
         data.append('address', formData.address);
+        if (formData.profile_image) {
+            data.append('profile_image', formData.profile_image);
+        }
 
         router.post('/user/settings/profile', data, {
             onSuccess: () => {
@@ -91,56 +84,6 @@ export default function UserSettings() {
             },
             onError: (errors) => {
                 console.error('Profile update errors:', errors);
-            }
-        });
-    };
-
-    const handleNotificationChange = (key: string, value: boolean) => {
-        setNotifications(prev => ({
-            ...prev,
-            [key]: value
-        }));
-        
-        // Auto-save notification preferences
-        const data = new FormData();
-        data.append('email_notifications', notifications.email_notifications ? '1' : '0');
-        data.append('push_notifications', notifications.push_notifications ? '1' : '0');
-        data.append('sms_notifications', notifications.sms_notifications ? '1' : '0');
-
-        router.post('/user/settings/notifications', data, {
-            onSuccess: () => {
-                console.log('Notification preferences updated');
-            },
-            onError: (errors) => {
-                console.error('Notification update errors:', errors);
-            }
-        });
-    };
-
-    const handlePreferenceChange = (key: string, value: string) => {
-        setPreferences(prev => ({
-            ...prev,
-            [key]: value
-        }));
-        
-        // If theme changed, use appearance hook to handle it
-        if (key === 'theme') {
-            updateAppearance(value as 'light' | 'dark' | 'system');
-        }
-    };
-
-    const handlePreferencesSave = () => {
-        const data = new FormData();
-        data.append('theme', preferences.theme);
-        data.append('language', preferences.language);
-        data.append('timezone', preferences.timezone);
-
-        router.post('/user/settings/preferences', data, {
-            onSuccess: () => {
-                console.log('Preferences updated successfully');
-            },
-            onError: (errors) => {
-                console.error('Preferences update errors:', errors);
             }
         });
     };
@@ -157,7 +100,7 @@ export default function UserSettings() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Settings" />
 
-            <div className="max-w-4xl mx-auto p-6 space-y-6">
+            <div className="w-full p-6 space-y-6">
                 {/* Success Message */}
                 {successMessage && (
                     <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
@@ -181,6 +124,39 @@ export default function UserSettings() {
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleProfileUpdate} className="space-y-4">
+                            {/* Profile Image Upload */}
+                            <div className="flex items-center gap-4">
+                                <div className="relative">
+                                    {user.profile_image ? (
+                                        <img
+                                            src={user.profile_image}
+                                            alt="Profile"
+                                            className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
+                                        />
+                                    ) : (
+                                        <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-200">
+                                            <User className="w-12 h-12 text-gray-400" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <Label htmlFor="profile_image">Profile Image</Label>
+                                    <Input
+                                        id="profile_image"
+                                        name="profile_image"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                setFormData({ ...formData, profile_image: file });
+                                            }
+                                        }}
+                                        className="mt-1"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">JPG, PNG or GIF. Max size 2MB.</p>
+                                </div>
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <Label htmlFor="name">Full Name</Label>
@@ -234,136 +210,6 @@ export default function UserSettings() {
                         </form>
                     </CardContent>
                 </Card>
-
-                {/* Notification Settings */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Bell className="w-5 h-5" />
-                            Notification Preferences
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <Label>Email Notifications</Label>
-                                <p className="text-sm text-gray-500">Receive email updates about your rentals</p>
-                            </div>
-                            <input
-                                type="checkbox"
-                                checked={notifications.email_notifications}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNotificationChange('email_notifications', e.target.checked)}
-                                className="w-4 h-4"
-                            />
-                        </div>
-                        <Separator />
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <Label>Push Notifications</Label>
-                                <p className="text-sm text-gray-500">Receive browser push notifications</p>
-                            </div>
-                            <input
-                                type="checkbox"
-                                checked={notifications.push_notifications}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNotificationChange('push_notifications', e.target.checked)}
-                                className="w-4 h-4"
-                            />
-                        </div>
-                        <Separator />
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <Label>SMS Notifications</Label>
-                                <p className="text-sm text-gray-500">Receive text message alerts</p>
-                            </div>
-                            <input
-                                type="checkbox"
-                                checked={notifications.sms_notifications}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNotificationChange('sms_notifications', e.target.checked)}
-                                className="w-4 h-4"
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Preferences */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Palette className="w-5 h-5" />
-                            Preferences
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <Label htmlFor="theme">Theme</Label>
-                                <select
-                                    id="theme"
-                                    value={appearance}
-                                    onChange={(e) => handlePreferenceChange('theme', e.target.value)}
-                                    className="mt-1 w-full p-2 border border-gray-300 rounded-md"
-                                >
-                                    <option value="light">Light</option>
-                                    <option value="dark">Dark</option>
-                                    <option value="system">System</option>
-                                </select>
-                            </div>
-                            <div>
-                                <Label htmlFor="language">Language</Label>
-                                <select
-                                    id="language"
-                                    value={preferences.language}
-                                    onChange={(e) => handlePreferenceChange('language', e.target.value)}
-                                    className="mt-1 w-full p-2 border border-gray-300 rounded-md"
-                                >
-                                    <option value="en">English</option>
-                                    <option value="tl">Filipino</option>
-                                </select>
-                            </div>
-                            <div>
-                                <Label htmlFor="timezone">Timezone</Label>
-                                <select
-                                    id="timezone"
-                                    value={preferences.timezone}
-                                    onChange={(e) => handlePreferenceChange('timezone', e.target.value)}
-                                    className="mt-1 w-full p-2 border border-gray-300 rounded-md"
-                                >
-                                    <option value="Asia/Manila">Asia/Manila</option>
-                                    <option value="UTC">UTC</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div className="flex justify-end pt-4">
-                            <Button onClick={handlePreferencesSave}>Save Preferences</Button>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Security */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Shield className="w-5 h-5" />
-                            Security
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-4">
-                            <div>
-                                <Label>Change Password</Label>
-                                <p className="text-sm text-gray-500 mb-2">Update your password to keep your account secure</p>
-                                <Button variant="outline">Change Password</Button>
-                            </div>
-                            <Separator />
-                            <div>
-                                <Label>Two-Factor Authentication</Label>
-                                <p className="text-sm text-gray-500 mb-2">Add an extra layer of security to your account</p>
-                                <Button variant="outline">Enable 2FA</Button>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
             </div>
         </AppLayout>
     );

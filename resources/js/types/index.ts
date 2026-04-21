@@ -35,6 +35,7 @@ export interface User {
     email: string;
     role?: string;
     avatar?: string;
+    profile_image?: string;
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;

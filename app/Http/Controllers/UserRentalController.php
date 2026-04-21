@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\RentalRequest;
 use App\Models\Rental;
+use App\Models\User;
 use App\Services\GeolocationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -219,7 +220,7 @@ class UserRentalController extends Controller
 
     public function settings()
     {
-        $user = Auth::user();
+        $user = Auth::user()->fresh();
 
         return Inertia::render('user/settings', [
             'breadcrumbs' => [
@@ -236,14 +237,32 @@ class UserRentalController extends Controller
     public function updateProfile(Request $request)
     {
         $user = Auth::user();
-        
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'contact_number' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:500',
+            'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        $user->update($validated);
+        $updateData = [
+            'name' => $validated['name'],
+            'contact_number' => $validated['contact_number'] ?? null,
+            'address' => $validated['address'] ?? null,
+        ];
+
+        // Handle profile image upload
+        if ($request->hasFile('profile_image')) {
+            $file = $request->file('profile_image');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('profile-images', $filename, 'public');
+            $updateData['profile_image'] = '/storage/' . $path;
+        }
+
+        $user->update($updateData);
+
+        // Refresh user in session
+        Auth::setUser($user->fresh());
 
         return redirect()->route('user.settings')
             ->with('success', 'Profile updated successfully!');
@@ -270,7 +289,7 @@ class UserRentalController extends Controller
     public function updatePreferences(Request $request)
     {
         $user = Auth::user();
-        
+
         $validated = $request->validate([
             'theme' => 'required|string|in:light,dark,system',
             'language' => 'required|string|in:en,tl',
@@ -282,6 +301,42 @@ class UserRentalController extends Controller
 
         return redirect()->route('user.settings')
             ->with('success', 'Preferences updated!');
+    }
+
+    public function usersIndex()
+    {
+        $users = User::select('id', 'name', 'email', 'role', 'status', 'created_at')->get();
+
+        return Inertia::render('users/index', [
+            'breadcrumbs' => [
+                ['title' => 'Dashboard', 'href' => '/dashboard'],
+                ['title' => 'User Management', 'href' => '/users']
+            ],
+            'users' => $users,
+            'auth' => [
+                'user' => Auth::user()
+            ]
+        ]);
+    }
+
+    public function archiveUser($id)
+    {
+        $user = User::findOrFail($id);
+        $user->status = 'archived';
+        $user->save();
+
+        return redirect()->route('users.index')
+            ->with('success', 'User archived successfully');
+    }
+
+    public function restoreUser($id)
+    {
+        $user = User::findOrFail($id);
+        $user->status = 'active';
+        $user->save();
+
+        return redirect()->route('users.index')
+            ->with('success', 'User restored successfully');
     }
 
     public function track(RentalRequest $rentalRequest)

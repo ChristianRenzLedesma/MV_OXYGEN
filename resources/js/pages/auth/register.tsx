@@ -173,7 +173,7 @@ export default function Register({ status, otp_sent, otp_error, user_id, otp_cod
                         {/* Left Image Column */}
                         <div className="lg:w-1/2 relative hidden lg:block animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
                             <img 
-                                src="/images/hero-image.png" 
+                                src="/images/hero-image2.png" 
                                 alt="Oxygen Tanks" 
                                 className="w-full h-full object-cover"
                                 style={{ minHeight: '500px' }}
@@ -482,14 +482,14 @@ export default function Register({ status, otp_sent, otp_error, user_id, otp_cod
 
                                 {/* Login Link */}
                                 <div className="text-center mt-4 animate-fadeInUp" style={{ animationDelay: '0.8s' }}>
-                                    <p className="text-muted small mb-0">
+                                    <p className="text-muted small mb-0" style={{ color: 'black' }}>
                                         Already have an account?{' '}
                                         <a 
                                             href={route('login')} 
                                             className="text-decoration-none fw-semibold transition-colors"
-                                            style={{ color: '#1E88E5' }}
+                                            style={{ color: '#194587' }}
                                         >
-                                            Sign in
+                                            Login
                                         </a>
                                     </p>
                                 </div>

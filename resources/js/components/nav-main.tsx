@@ -27,10 +27,9 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                             >
                                 <Link 
                                     href={item.url} 
-                                    prefetch={false}
                                     onClick={() => console.log(`Link clicked: ${item.title} -> ${item.url}`)}
                                 >
-                                    {item.icon && <item.icon />}
+                                    <item.icon className="w-4 h-4" />
                                     <span>{item.title}</span>
                                 </Link>
                             </SidebarMenuButton>

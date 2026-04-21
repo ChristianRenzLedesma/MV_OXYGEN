@@ -11,6 +11,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\DepositController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\AdminController;
 
 Route::get('/', function () {
     return Inertia::render('welcome');
@@ -147,6 +148,20 @@ Route::middleware(['auth'])->group(function () {
 
     // Supplier Routes
     Route::get('suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
+
+    // Admin Settings Route
+    Route::get('admin/settings', [AdminController::class, 'settings'])->name('admin.settings');
+    Route::post('admin/settings/profile', [AdminController::class, 'updateProfile'])->name('admin.settings.profile');
+    Route::post('admin/backup', [AdminController::class, 'backup'])->name('admin.backup');
+    Route::post('admin/restore', [AdminController::class, 'restore'])->name('admin.restore');
+    Route::get('admin/backups', [AdminController::class, 'listBackups'])->name('admin.backups.list');
+    Route::get('admin/backups/{filename}/download', [AdminController::class, 'downloadBackup'])->name('admin.backups.download');
+    Route::delete('admin/backups/{filename}', [AdminController::class, 'deleteBackup'])->name('admin.backups.delete');
+
+    // User Management Routes
+    Route::get('users', [UserRentalController::class, 'usersIndex'])->name('users.index');
+    Route::post('users/{id}/archive', [UserRentalController::class, 'archiveUser'])->name('users.archive');
+    Route::post('users/{id}/restore', [UserRentalController::class, 'restoreUser'])->name('users.restore');
     Route::get('suppliers/create', [SupplierController::class, 'create'])->name('suppliers.create');
     Route::post('suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
     Route::get('suppliers/{supplier}/edit', [SupplierController::class, 'edit'])->name('suppliers.edit');

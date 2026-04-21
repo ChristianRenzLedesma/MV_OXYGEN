@@ -46,9 +46,8 @@ const adminNavItems: NavItem[] = [
     },
     {
         title: 'Settings',
-        url: '#',
+        url: '/admin/settings',
         icon: Settings,
-        disabled: true,
     }
 ];
 
@@ -78,7 +77,6 @@ const userNavItems: NavItem[] = [
         title: 'Settings',
         url: '/user/settings',
         icon: Settings,
-        disabled: true,
     }
 ];
 

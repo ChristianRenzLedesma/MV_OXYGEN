@@ -41,7 +41,30 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        // Get user credentials
+        $credentials = $this->only('email', 'password');
+
+        // Check if user exists and is not archived or inactive before attempting authentication
+        $user = \App\Models\User::where('email', $credentials['email'])->first();
+        if ($user) {
+            if ($user->status === 'archived') {
+                RateLimiter::hit($this->throttleKey());
+
+                throw ValidationException::withMessages([
+                    'email' => 'Your account has been archived. Please contact the administrator.',
+                ]);
+            }
+
+            if ($user->status === 'inactive') {
+                RateLimiter::hit($this->throttleKey());
+
+                throw ValidationException::withMessages([
+                    'email' => 'Your account is inactive. Please contact the administrator.',
+                ]);
+            }
+        }
+
+        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([

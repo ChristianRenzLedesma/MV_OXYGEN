@@ -54,7 +54,7 @@ export default function Login({ status, canResetPassword, error }: LoginProps) {
                         {/* Left Image Column */}
                         <div className="lg:w-1/2 relative hidden lg:block animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
                             <img 
-                                src="/images/hero-image.png" 
+                                src="/images/hero-image2.png" 
                                 alt="Oxygen Tanks" 
                                 className="w-full h-full object-cover"
                                 style={{ minHeight: '600px' }}

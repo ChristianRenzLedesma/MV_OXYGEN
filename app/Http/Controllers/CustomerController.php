@@ -263,6 +263,9 @@ class CustomerController extends Controller
         try {
             $customer->update(['status' => 'archived']);
             
+            // Archive associated user account
+            \App\Models\User::where('name', $customer->name)->update(['status' => 'archived']);
+            
             // Get updated customer list
             $customers = Customer::orderBy('created_at', 'desc')->get();
             $customers->each(function ($customer) {
@@ -299,6 +302,9 @@ class CustomerController extends Controller
         
         try {
             $customer->update(['status' => 'active']);
+            
+            // Restore associated user account
+            \App\Models\User::where('name', $customer->name)->update(['status' => 'active']);
             
             // Get updated customer list
             $customers = Customer::orderBy('created_at', 'desc')->get();
