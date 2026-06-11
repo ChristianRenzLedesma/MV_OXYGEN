@@ -5,6 +5,8 @@ namespace App\Http\Middleware;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use App\Models\Customer;
+use App\Models\RentalRequest;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -24,7 +26,7 @@ class HandleInertiaRequests extends Middleware
      */
     public function version(Request $request): ?string
     {
-        return parent::version($request);
+         return parent::version($request);
     }
 
     /**
@@ -38,6 +40,42 @@ class HandleInertiaRequests extends Middleware
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
+        $billingInfo = [];
+        $totalOutstandingBalance = 0;
+
+        if ($request->user()) {
+            $customer = Customer::where('name', $request->user()->name)->first();
+
+            if ($customer) {
+                $approvedRentals = RentalRequest::with(['rental'])
+                    ->where('customer_id', $customer->id)
+                    ->where('status', 'approved')
+                    ->get();
+
+                foreach ($approvedRentals as $rentalRequest) {
+                    if ($rentalRequest->rental) {
+                        $rental = $rentalRequest->rental;
+                        $totalAmount = $rental->total_amount ?? 0;
+                        $depositAmount = $rental->deposit_amount ?? 0;
+                        $remainingBalance = max($totalAmount - $depositAmount, 0);
+
+                        if ($remainingBalance > 0) {
+                            $billingInfo[] = [
+                                'rental_request_id' => $rentalRequest->id,
+                                'tank_type' => $rentalRequest->tank_type,
+                                'total_amount' => $totalAmount,
+                                'deposit_amount' => $depositAmount,
+                                'remaining_balance' => $remainingBalance,
+                                'status' => $rentalRequest->status,
+                                'pickup_date' => $rental->pickup_date,
+                            ];
+                        }
+                    }
+                }
+                $totalOutstandingBalance = array_sum(array_column($billingInfo, 'remaining_balance'));
+            }
+        }
+
         return array_merge(parent::share($request), [
             ...parent::share($request),
             'name' => config('app.name'),
@@ -49,6 +87,8 @@ class HandleInertiaRequests extends Middleware
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
             ],
+            'billingInfo' => $billingInfo,
+            'totalOutstandingBalance' => $totalOutstandingBalance,
         ]);
     }
 }

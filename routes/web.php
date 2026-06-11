@@ -3,6 +3,17 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\CustomerController;
+
+// Serve storage files through Laravel (workaround for Windows junction 403 issue with php artisan serve)
+// This must be registered before other routes to take priority over Laravel's default filesystem routes
+Route::get('/storage/{path}', function (string $path) {
+    $fullPath = storage_path('app/public/' . $path);
+    if (!file_exists($fullPath)) {
+        abort(404);
+    }
+    return response()->file($fullPath);
+})->where('path', '.*')->name('storage.serve');
+
 use App\Http\Controllers\RentalController;
 use App\Http\Controllers\RefillController;
 use App\Http\Controllers\CashierController;
@@ -18,6 +29,7 @@ use App\Http\Controllers\SupplierOrderController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\OtpController;
+use App\Http\Controllers\TrackingController;
 
 Route::get('/', function () {
     return Inertia::render('welcome');
@@ -30,6 +42,13 @@ Route::get('/faq', function () {
 Route::get('/contact', function () {
     return Inertia::render('contact');
 })->name('contact');
+
+// Public tracking routes
+Route::get('/track', function () {
+    return redirect()->route('home');
+})->name('track');
+Route::get('/track/lookup', [TrackingController::class, 'lookup'])->name('track.lookup');
+Route::get('/track/{trackingNumber}', [TrackingController::class, 'show'])->name('track.show');
 
 // OTP Routes (accessible without authentication)
 Route::post('send-otp', [OtpController::class, 'sendOtp'])->name('otp.send');
@@ -52,11 +71,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('user/rentals', [UserRentalController::class, 'store'])->name('user.rentals.store');
     Route::get('user/rentals/{rentalRequest}', [UserRentalController::class, 'show'])->name('user.rentals.show');
     Route::get('user/rentals/{rentalRequest}/edit', [UserRentalController::class, 'edit'])->name('user.rentals.edit');
+    Route::get('user/rentals/{rentalRequest}/track', [UserRentalController::class, 'track'])->name('user.rentals.track');
     Route::put('user/rentals/{rentalRequest}', [UserRentalController::class, 'update'])->name('user.rentals.update');
     Route::post('user/rentals/{rentalRequest}/update-image', [UserRentalController::class, 'updateImage'])->name('user.rentals.update-image');
     Route::post('user/rentals/{rentalRequest}/cancel', [UserRentalController::class, 'cancel'])->name('user.rentals.cancel');
     Route::post('user/rentals/{rentalRequest}/pay-remaining', [UserRentalController::class, 'payRemainingBalance'])->name('user.rentals.pay-remaining');
-    Route::get('user/rentals/{rentalRequest}/track', [UserRentalController::class, 'track'])->name('user.rentals.track');
     Route::get('user/history', [UserRentalController::class, 'history'])->name('user.history');
     Route::post('user/history/clear', [UserRentalController::class, 'clearHistory'])->name('user.history.clear');
     Route::get('user/settings', [UserRentalController::class, 'settings'])->name('user.settings');
@@ -250,6 +269,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('refills/{rentalRequest}', [RefillController::class, 'show'])->name('refills.show');
     Route::post('refills', [RefillController::class, 'store'])->name('refills.store');
     Route::post('refills/{rentalRequest}/approve', [RefillController::class, 'approve'])->name('refills.approve');
+    Route::post('refills/{rentalRequest}/dispatch', [RefillController::class, 'dispatchDelivery'])->name('refills.dispatch');
     Route::post('refills/{rentalRequest}/reject', [RefillController::class, 'reject'])->name('refills.reject');
     Route::post('refills/{rentalRequest}/return', [RefillController::class, 'markAsReturned'])->name('refills.return');
     Route::put('refills/{rentalRequest}/notes', [RefillController::class, 'updateNotes'])->name('refills.update-notes');
@@ -288,6 +308,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('inventory', [InventoryController::class, 'store'])->name('inventory.store');
     Route::put('inventory/{tank}', [InventoryController::class, 'update'])->name('inventory.update');
     Route::post('inventory/maintenance', [InventoryController::class, 'storeMaintenance'])->name('inventory.maintenance.store');
+    Route::post('inventory/maintenance/{maintenance}/start', [InventoryController::class, 'startMaintenance'])->name('inventory.maintenance.start');
     Route::post('inventory/maintenance/{maintenance}/complete', [InventoryController::class, 'completeMaintenance'])->name('inventory.maintenance.complete');
 
     // Purchase Order Routes
@@ -323,6 +344,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Rental Routes (Approve, Reject, etc.)
     Route::post('rentals/{rentalRequest}/approve', [RentalController::class, 'approve'])->name('rentals.approve');
+    Route::post('rentals/{rentalRequest}/dispatch', [RentalController::class, 'dispatchDelivery'])->name('rentals.dispatch');
     Route::post('rentals/{rentalRequest}/reject', [RentalController::class, 'reject'])->name('rentals.reject');
     Route::post('rentals/{rentalRequest}/cancel', [RentalController::class, 'cancel'])->name('rentals.cancel');
     Route::post('rentals/{rentalRequest}/return', [RentalController::class, 'markAsReturned'])->name('rentals.return');

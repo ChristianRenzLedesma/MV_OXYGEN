@@ -275,7 +275,7 @@ export default function AddCustomerDialog({ onSuccess }: AddCustomerDialogProps)
                                         id="contact_number"
                                         type="tel"
                                         inputMode="numeric"
-                                        maxLength={11}
+                                        maxLength={10}
                                         className="w-full transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         style={{
                                             borderRadius: '8px',

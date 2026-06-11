@@ -1,12 +1,37 @@
 import { type SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
+import { Search, Package, MapPin, CheckCircle, Truck, ClipboardList, Clock, XCircle, Hash, X, Loader } from 'lucide-react';
 
 export default function Welcome() {
-    const { auth, url } = usePage<SharedData>().props;
+    const { url, props: { auth } } = usePage<SharedData>();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [footerVisible, setFooterVisible] = useState(false);
     const footerRef = useRef<HTMLElement | null>(null);
+    const [trackInput, setTrackInput] = useState('');
+    const [trackResult, setTrackResult] = useState<any>(null);
+    const [trackLoading, setTrackLoading] = useState(false);
+    const [trackError, setTrackError] = useState('');
+    const [showModal, setShowModal] = useState(false);
+
+    const handleTrack = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const q = trackInput.trim();
+        if (!q) return;
+        setTrackLoading(true);
+        setTrackError('');
+        setTrackResult(null);
+        try {
+            const res = await fetch(`/track/lookup?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+            setTrackResult(data);
+            setShowModal(true);
+        } catch {
+            setTrackError('Failed to look up tracking number.');
+        } finally {
+            setTrackLoading(false);
+        }
+    };
 
     const currentPath = url || '';
 
@@ -45,7 +70,7 @@ export default function Welcome() {
                 <link rel="preconnect" href="https://fonts.bunny.net" />
                 <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
             </Head>
-            <div className="flex flex-col items-center bg-[#FDFDFC] pt-20 px-6 text-[#1b1b18] lg:px-8 dark:bg-[#0a0a0a]">
+            <div className="flex flex-col items-center bg-[#FDFDFC] pt-20 pb-20 px-6 text-[#1b1b18] lg:px-8 dark:bg-[#0a0a0a]">
                 <header className="fixed top-0 left-0 right-0 z-50 w-full px-6 pt-4 pb-3 text-sm bg-white/95 backdrop-blur-sm border-b border-gray-200 dark:bg-[#0a0a0a]/95 dark:border-gray-800 transition-all duration-300 ease-in-out">
                     <nav className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -203,13 +228,38 @@ export default function Welcome() {
                                         Manage rentals, track refills, monitor inventory in real-time
                                     </p>
                                 </header>
-                                <Link
-                                    href={route('register')}
-                                    className="inline-block rounded px-4 py-3 text-white font-medium transition-all duration-300 hover:scale-105 animate-fadeInUp"
-                                    style={{ backgroundColor: '#2563EB', borderColor: '#2563EB', animationDelay: '0.2s' }}
-                                >
-                                    Get Started
-                                </Link>
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
+                                    <Link
+                                        href={route('register')}
+                                        className="inline-block rounded px-4 py-3 text-white font-medium text-center whitespace-nowrap transition-all duration-300 hover:scale-105"
+                                        style={{ backgroundColor: '#2563EB' }}
+                                    >
+                                        Get Started
+                                    </Link>
+                                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                                        <div className="relative flex-1 sm:flex-initial">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                value={trackInput}
+                                                onChange={(e) => setTrackInput(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleTrack(e as any)}
+                                                placeholder="Enter tracking number (e.g. MV-O2X7K9L3)"
+                                                className="w-full sm:w-72 md:w-80 pl-9 pr-3 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={handleTrack}
+                                            disabled={trackLoading}
+                                            className="px-4 py-3 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+                                        >
+                                            {trackLoading ? <Loader className="w-4 h-4 animate-spin" /> : 'Track'}
+                                        </button>
+                                    </div>
+                                </div>
+                                {trackError && (
+                                    <p className="text-red-500 text-sm mt-2">{trackError}</p>
+                                )}
 
                                 {/* Feature Cards */}
                                 <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 lg:mt-5">
@@ -259,26 +309,242 @@ export default function Welcome() {
                 </section>
             </div>
 
+            {/* Tracking Result Modal */}
+            {showModal && trackResult && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setShowModal(false)}>
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between rounded-t-2xl">
+                            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                <Package className="w-5 h-5 text-blue-600" />
+                                Track Order
+                            </h2>
+                            <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-gray-500" />
+                            </button>
+                        </div>
+
+                        <div className="p-6">
+                            {trackResult.not_found ? (
+                                <div className="text-center py-8">
+                                    <XCircle className="w-16 h-16 text-red-400 mx-auto mb-3" />
+                                    <h3 className="text-xl font-semibold text-gray-800 mb-1">Order Not Found</h3>
+                                    <p className="text-gray-500">No order found with tracking number <strong>{trackResult.tracking_number}</strong></p>
+                                </div>
+                            ) : trackResult.rental ? (
+                                <>
+                                    {/* Tracking Number */}
+                                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-4 mb-6">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-white/80 text-sm">Tracking Number</span>
+                                            <span className="text-white font-bold tracking-wider">{trackResult.rental.tracking_number}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Progress Steps */}
+                                    <div className="mb-6 overflow-x-auto pb-2">
+                                        <div className="flex items-center justify-center min-w-[400px]">
+                                            {[
+                                                { key: 'ordered', label: 'Ordered', icon: CheckCircle },
+                                                { key: 'packed', label: 'Packed', icon: ClipboardList },
+                                                { key: 'in_transit', label: 'In Transit', icon: Truck },
+                                                { key: 'delivered', label: 'Delivered', icon: MapPin },
+                                            ].map((step, i) => {
+                                                const s = trackResult.rental.status;
+                                                const isActive = step.key === 'ordered' ? ['pending','approved','in_transit','delivered'].includes(s)
+                                                    : step.key === 'packed' ? ['approved','in_transit','delivered'].includes(s)
+                                                    : step.key === 'in_transit' ? ['in_transit','delivered'].includes(s)
+                                                    : s === 'delivered';
+                                                const isCompleted = step.key === 'ordered' ? ['approved','in_transit','delivered'].includes(s)
+                                                    : step.key === 'packed' ? ['in_transit','delivered'].includes(s)
+                                                    : step.key === 'in_transit' ? s === 'delivered'
+                                                    : s === 'delivered';
+                                                return (
+                                                    <div key={step.key} className="flex items-center">
+                                                        <div className="flex flex-col items-center">
+                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                                                                isCompleted ? 'bg-green-500 text-white' : isActive ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-400'
+                                                            }`}>
+                                                                <step.icon className="w-5 h-5" />
+                                                            </div>
+                                                            <span className={`mt-1 text-xs font-semibold ${isCompleted || isActive ? 'text-gray-900' : 'text-gray-400'}`}>
+                                                                {step.label}
+                                                            </span>
+                                                        </div>
+                                                        {i < 3 && (
+                                                            <div className={`w-12 h-1 mx-1 rounded ${
+                                                                i === 0 ? (['approved','in_transit','delivered'].includes(s) ? 'bg-green-500' : 'bg-gray-300')
+                                                                : i === 1 ? (['in_transit','delivered'].includes(s) ? 'bg-green-500' : 'bg-gray-300')
+                                                                : (s === 'delivered' ? 'bg-green-500' : 'bg-gray-300')
+                                                            }`} />
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Details */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                                        {trackResult.rental.delivery_location && (
+                                            <div className="bg-gray-50 rounded-xl p-4">
+                                                <h4 className="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+                                                    <MapPin className="w-4 h-4 text-green-500" /> Delivery Address
+                                                </h4>
+                                                <p className="text-sm text-gray-600">{trackResult.rental.delivery_location.address}</p>
+                                            </div>
+                                        )}
+                                        <div className="bg-gray-50 rounded-xl p-4">
+                                            <h4 className="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+                                                <Package className="w-4 h-4 text-blue-500" /> Tank Details
+                                            </h4>
+                                            <p className="text-sm text-gray-600">{trackResult.rental.tank_type}</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">
+                                                {trackResult.rental.pickup_type === 'delivery' ? 'Delivery' : 'Pickup'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Activity Timeline */}
+                                    {trackResult.rental.activities?.length > 0 && (
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-1.5">
+                                                <Clock className="w-4 h-4 text-blue-500" /> Activity Timeline
+                                            </h4>
+                                            <div className="relative">
+                                                {trackResult.rental.activities.map((act: any, i: number) => {
+                                                    const Icon = act.action === 'rental_request' || act.action === 'rental_approved' ? CheckCircle
+                                                        : act.action === 'rental_dispatched' ? Truck
+                                                        : act.action === 'rental_rejected' ? XCircle
+                                                        : act.action === 'rental_completed' ? MapPin : Clock;
+                                                    const color = act.action === 'rental_request' ? 'bg-blue-500'
+                                                        : act.action === 'rental_approved' ? 'bg-green-500'
+                                                        : act.action === 'rental_dispatched' ? 'bg-orange-500'
+                                                        : act.action === 'rental_rejected' ? 'bg-red-500'
+                                                        : act.action === 'rental_completed' ? 'bg-green-500' : 'bg-gray-500';
+                                                    return (
+                                                        <div key={i} className="flex items-start mb-4 last:mb-0">
+                                                            {i < trackResult.rental.activities.length - 1 && (
+                                                                <div className="absolute left-[19px] w-0.5 h-10 bg-gray-300" style={{ marginTop: '40px' }} />
+                                                            )}
+                                                            <div className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${color} text-white`}>
+                                                                <Icon className="w-4 h-4" />
+                                                            </div>
+                                                            <div className="ml-3 flex-1">
+                                                                <p className="text-sm text-gray-800">{act.description}</p>
+                                                                <p className="text-xs text-gray-500 mt-0.5">
+                                                                    {new Date(act.created_at).toLocaleDateString('en-PH', {
+                                                                        year: 'numeric', month: 'long', day: 'numeric',
+                                                                        hour: '2-digit', minute: '2-digit'
+                                                                    })}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            ) : null}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <footer
                 ref={footerRef}
                 data-footer="true"
-                className={`bg-gray-900 text-white py-8 w-full transition-all duration-700 ${footerVisible ? 'animate-fadeInUp' : 'opacity-0'
+                className={`bg-gray-900 text-white py-12 w-full transition-all duration-700 ${footerVisible ? 'animate-fadeInUp' : 'opacity-0'
                     }`}
             >
                 <div className="px-6 lg:px-8">
                     <div className="max-w-7xl mx-auto">
-                        <div className="flex items-center gap-3 mb-4">
-                            <img
-                                src="images/mv-oxygen-logo.png"
-                                alt="MV Oxygen Trading Logo"
-                                className="w-8 h-8"
-                            />
-                            <span className="text-lg font-semibold">MV Oxygen Trading</span>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                            {/* Company Info */}
+                            <div>
+                                <div className="flex items-center gap-3 mb-4">
+                                    <img
+                                        src="images/mv-oxygen-logo.png"
+                                        alt="MV Oxygen Trading Logo"
+                                        className="w-8 h-8"
+                                    />
+                                    <span className="text-lg font-semibold">MV Oxygen Trading</span>
+                                </div>
+                                <p className="text-gray-400 text-sm mb-4">
+                                    Oxygen Tank Rental & Refill Management System
+                                </p>
+                                <div className="flex items-center gap-4 mt-6">
+                                    <a href="https://www.facebook.com/mvoxygentrading" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#1877F2] transition-colors" aria-label="Facebook">
+                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                            <path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" />
+                                        </svg>
+                                    </a>
+                                    <a href="mailto:michael121617@yahoo.com" className="text-gray-400 hover:text-white transition-colors" aria-label="Email">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                    </a>
+                                </div>
+                            </div>
+
+                            {/* Quick Links */}
+                            <div>
+                                <h4 className="text-lg font-semibold mb-4 text-gray-200">Quick Links</h4>
+                                <ul className="space-y-2 text-sm text-gray-400">
+                                    <li>
+                                        <a href="/" className="hover:text-white transition-colors">Home</a>
+                                    </li>
+                                    <li>
+                                        <Link href="/faq" className="hover:text-white transition-colors">FAQ</Link>
+                                    </li>
+                                    <li>
+                                        <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
+                                    </li>
+                                    {!auth.user ? (
+                                        <>
+                                            <li>
+                                                <Link href={route('login')} className="hover:text-white transition-colors">Log in</Link>
+                                            </li>
+                                            <li>
+                                                <Link href={route('register')} className="hover:text-white transition-colors">Register</Link>
+                                            </li>
+                                        </>
+                                    ) : (
+                                        <li>
+                                            <Link href={route('dashboard')} className="hover:text-white transition-colors">Dashboard</Link>
+                                        </li>
+                                    )}
+                                </ul>
+                            </div>
+
+                            {/* Contact Info */}
+                            <div>
+                                <h4 className="text-lg font-semibold mb-4 text-gray-200">Contact Info</h4>
+                                <ul className="space-y-3 text-sm text-gray-400">
+                                    <li className="flex items-start gap-3">
+                                        <svg className="w-5 h-5 mt-0.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        <span>0075 Rizal St. Conception General Tinio, Nueva Ecija</span>
+                                    </li>
+                                    <li className="flex items-center gap-3">
+                                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                        <span>michael121617@yahoo.com</span>
+                                    </li>
+                                    <li className="flex items-center gap-3">
+                                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                        </svg>
+                                        <span>0977-330-5640</span>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
-                        <p className="text-gray-400 text-sm">
-                            Oxygen Tank Rental & Refill Management System
-                        </p>
-                        <div className="mt-4 pt-4 border-t border-gray-700 text-gray-500 text-sm">
+
+                        <div className="pt-8 border-t border-gray-800 text-center text-gray-500 text-sm">
                             © 2026 MV Oxygen Trading. All rights reserved.
                         </div>
                     </div>

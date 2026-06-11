@@ -33,12 +33,6 @@ export default function EmailVerificationOtp({ user_id, status, otp_sent, otp_er
     const [testOtpCode, setTestOtpCode] = useState(test_otp_code || '');
 
     useEffect(() => {
-        if (status || otp_sent) {
-            setShowSuccessModal(true);
-        }
-    }, [status, otp_sent]);
-
-    useEffect(() => {
         if (test_otp_code) {
             setTestOtpCode(test_otp_code);
         }
@@ -46,7 +40,7 @@ export default function EmailVerificationOtp({ user_id, status, otp_sent, otp_er
 
     useEffect(() => {
         if (verified) {
-            router.visit(route('dashboard'));
+            setShowSuccessModal(true);
         }
     }, [verified]);
 
@@ -56,7 +50,7 @@ export default function EmailVerificationOtp({ user_id, status, otp_sent, otp_er
             onSuccess: (page) => {
                 // Check if verification was successful
                 if (page.props.verified) {
-                    router.visit(route('dashboard'));
+                    setShowSuccessModal(true);
                 }
             },
             onError: (errors) => {

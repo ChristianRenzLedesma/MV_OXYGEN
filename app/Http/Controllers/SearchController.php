@@ -20,9 +20,8 @@ class SearchController extends Controller
                 ->orWhere('tank_type', 'LIKE', "%{$query}%")
                 ->orWhere('purpose', 'LIKE', "%{$query}%")
                 ->orWhere('contact_number', 'LIKE', "%{$query}%")
-                ->orWhere('tracking_number', 'LIKE', "%{$query}%")
                 ->limit(5)
-                ->get(['id', 'tank_type', 'purpose', 'tracking_number']);
+                ->get(['id', 'tank_type', 'purpose']);
 
             foreach ($rentals as $rental) {
                 $results[] = [

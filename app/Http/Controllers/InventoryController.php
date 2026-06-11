@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tank;
+use App\Models\Rental;
 use App\Models\Maintenance;
 use App\Models\Supplier;
+use App\Models\PurchaseOrderItem;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -17,18 +21,28 @@ class InventoryController extends Controller
      */
     public function index(): Response
     {
-        $tanks = Tank::orderBy('tank_type')->get();
+        $activeRentalsByTankType = Rental::whereIn('rentals.status', ['active', 'pending_return'])
+            ->leftJoin('tanks as rental_tanks', 'rentals.tank_id', '=', 'rental_tanks.tank_id')
+            ->selectRaw('rental_tanks.tank_type as tank_type, COUNT(*) as active_count')
+            ->groupBy('rental_tanks.tank_type')
+            ->pluck('active_count', 'tank_type')
+            ->filter(function ($count, $tankType) {
+                return !is_null($tankType);
+            });
 
-        // Convert image paths to full URLs
+        $tanks = Tank::orderBy('tank_type')
+            ->get()
+            ->map(function ($tank) use ($activeRentalsByTankType) {
+                $tank->active_rental_count = (int) ($activeRentalsByTankType[$tank->tank_type] ?? 0);
+                return $tank;
+            });
+
+        // Convert image paths to /storage/ prefix for custom route
         $tanks->transform(function ($tank) {
             if ($tank->image) {
                 // If image already has /storage/ prefix, use it as-is
-                if (str_starts_with($tank->image, '/storage/')) {
-                    $tank->image = asset($tank->image);
-                }
-                // If image is a relative path without /storage/, convert it
-                elseif (!str_starts_with($tank->image, 'http')) {
-                    $tank->image = asset(Storage::url($tank->image));
+                if (!str_starts_with($tank->image, '/storage/')) {
+                    $tank->image = '/storage/' . ltrim($tank->image, '/');
                 }
             }
             return $tank;
@@ -37,10 +51,54 @@ class InventoryController extends Controller
         $maintenances = Maintenance::orderBy('created_at', 'desc')->get();
         $suppliers = Supplier::get();
 
+        // Get available tank options from purchase orders (only products that have been purchased and received)
+        $purchaseOrderItems = PurchaseOrderItem::select(
+                'purchase_order_items.product_name',
+                'purchase_order_items.price',
+                'purchase_order_items.quantity',
+                'purchase_order_items.received_quantity',
+                'purchase_order_items.created_at',
+                'purchase_orders.order_date as order_date'
+            )
+            ->join('purchase_orders', 'purchase_order_items.purchase_order_id', '=', 'purchase_orders.id')
+            ->whereIn('purchase_orders.status', ['received', 'partial_received', 'shipped'])
+            ->orderBy('purchase_order_items.created_at', 'desc')
+            ->get();
+
+        $availableTankOptions = $purchaseOrderItems
+            ->groupBy('product_name')
+            ->map(function ($items, $productName) {
+                $latestItem = $items->sortByDesc('created_at')->first();
+
+                $totalOrdered = $items->sum(function ($item) {
+                    return $item->received_quantity > 0 ? $item->received_quantity : $item->quantity;
+                });
+
+                $orderDate = null;
+                if ($latestItem) {
+                    $orderDateSource = $latestItem->order_date ?? $latestItem->created_at;
+                    if ($orderDateSource) {
+                        $orderDate = Carbon::parse($orderDateSource)->toDateString();
+                    }
+                }
+
+                return [
+                    'name' => $productName,
+                    'price' => (float) $latestItem->price,
+                    'quantity' => (int) $totalOrdered,
+                    'orderDate' => $orderDate,
+                ];
+            })
+            ->values()
+            ->sortBy('name', SORT_REGULAR, false)
+            ->values()
+            ->all();
+
         return Inertia::render('inventory/index', [
             'products' => $tanks,
             'maintenances' => $maintenances,
             'suppliers' => $suppliers,
+            'availableTankOptions' => $availableTankOptions,
             'auth' => [
                 'user' => auth()->user()
             ]
@@ -53,37 +111,40 @@ class InventoryController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'tank_type' => 'required|string|max:255',
-            'quantity' => 'required|integer|min:1',
-            'price' => 'required|numeric|min:0',
-            'last_refilled' => 'nullable|date',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
+            'tanks' => 'required|array|min:1',
+            'tanks.*.tank_type' => 'required|string|max:255',
+            'tanks.*.quantity' => 'required|integer|min:1',
+            'tanks.*.price' => 'required|numeric|min:0',
+            'tanks.*.last_refilled' => 'nullable|date',
+            'tanks.*.image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
         ]);
 
-        $tankData = [
-            'tank_type' => $request->tank_type,
-            'quantity' => $request->quantity,
-            'price' => $request->price,
-            'last_refilled' => $request->last_refilled,
-            'status' => 'available',
-        ];
+        foreach ($request->tanks as $index => $tankInput) {
+            $tankData = [
+                'tank_type' => $tankInput['tank_type'],
+                'quantity' => $tankInput['quantity'],
+                'price' => $tankInput['price'],
+                'last_refilled' => $tankInput['last_refilled'] ?? null,
+                'status' => 'available',
+            ];
 
-        // Handle image upload
-        if ($request->hasFile('image')) {
-            // Ensure storage directory exists
-            if (!Storage::disk('public')->exists('tank-images')) {
-                Storage::disk('public')->makeDirectory('tank-images');
+            // Handle image upload
+            if (isset($tankInput['image']) && $tankInput['image'] instanceof \Illuminate\Http\UploadedFile) {
+                if (!Storage::disk('public')->exists('tank-images')) {
+                    Storage::disk('public')->makeDirectory('tank-images');
+                }
+
+                $file = $tankInput['image'];
+                $filename = time() . '_' . $index . '_' . $file->getClientOriginalName();
+                $path = $file->storeAs('tank-images', $filename, 'public');
+                $tankData['image'] = '/storage/' . $path;
             }
 
-            $file = $request->file('image');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('tank-images', $filename, 'public');
-            $tankData['image'] = '/storage/' . $path;
+            Tank::create($tankData);
         }
 
-        Tank::create($tankData);
-
-        return redirect()->back()->with('success', 'Tank added successfully!');
+        $count = count($request->tanks);
+        return redirect()->back()->with('success', $count . ' product(s) added successfully!');
     }
 
     /**
@@ -91,15 +152,29 @@ class InventoryController extends Controller
      */
     public function update(Request $request, Tank $tank)
     {
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'tank_type' => 'required|string|max:255',
-            'quantity' => 'required|integer|min:1',
+            'quantity' => 'required|integer|min:0',
             'price' => 'required|numeric|min:0',
             'last_refilled' => 'nullable|date',
             'status' => 'required|string|in:available,rented_out,maintenance',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
-            'quantity_change_reason' => 'required|string|max:1000'
+            'quantity_change_reason' => 'nullable|string|max:1000'
         ]);
+
+        $validator->after(function ($validator) use ($request, $tank) {
+            $currentQuantity = (int) $tank->quantity;
+            $newQuantity = (int) $request->quantity;
+
+            if ($newQuantity !== $currentQuantity) {
+                $reason = trim((string) $request->quantity_change_reason);
+                if ($reason === '') {
+                    $validator->errors()->add('quantity_change_reason', 'Reason for quantity change is required when quantity is modified.');
+                }
+            }
+        });
+
+        $validator->validate();
 
         $tankData = [
             'tank_type' => $request->tank_type,
@@ -175,6 +250,7 @@ class InventoryController extends Controller
             'tank_type' => $request->tank_type,
             'quantity' => $request->quantity,
             'condition' => $request->condition,
+            'status' => 'pending',
             'valve' => $request->valve,
         ]);
 
@@ -183,6 +259,26 @@ class InventoryController extends Controller
         $tank->save();
 
         return redirect()->back()->with('success', 'Maintenance record added successfully and tank quantity reduced.');
+    }
+
+    /**
+     * Mark a maintenance record as in progress and set tank status to maintenance.
+     */
+    public function startMaintenance(Maintenance $maintenance)
+    {
+        if ($maintenance->status === 'done') {
+            return redirect()->back()->with('error', 'Completed maintenance records cannot be reopened.');
+        }
+
+        $tank = Tank::where('tank_type', $maintenance->tank_type)->first();
+        if ($tank) {
+            $tank->status = 'maintenance';
+            $tank->save();
+        }
+
+        $maintenance->update(['status' => 'in_maintenance']);
+
+        return redirect()->back()->with('success', 'Maintenance marked as in progress and tank status updated.');
     }
 
     /**
@@ -197,6 +293,7 @@ class InventoryController extends Controller
         $tank = Tank::where('tank_type', $maintenance->tank_type)->first();
         if ($tank) {
             $tank->quantity += $maintenance->quantity;
+            $tank->status = 'available';
             $tank->save();
         }
 

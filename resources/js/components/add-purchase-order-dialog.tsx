@@ -164,19 +164,32 @@ export default function AddPurchaseOrderDialog({ open, onOpenChange, onSuccess, 
         const product = getSelectedProduct();
         if (!product || !quantity) return;
 
+        const requestedQuantity = parseInt(quantity);
         const existingItemIndex = orderItems.findIndex(item => item.product_id === product.id);
-        
+        const currentOrderedQuantity = existingItemIndex >= 0 ? orderItems[existingItemIndex].quantity : 0;
+        const totalRequestedQuantity = currentOrderedQuantity + requestedQuantity;
+
+        // Check stock availability
+        if (product.stock_quantity < totalRequestedQuantity) {
+            showAlert(
+                'Insufficient Stock',
+                `Insufficient stock for ${product.product_name}. Available: ${product.stock_quantity}, Requested: ${totalRequestedQuantity}`,
+                'error'
+            );
+            return;
+        }
+
         if (existingItemIndex >= 0) {
             // Update existing item
             const updatedItems = [...orderItems];
-            updatedItems[existingItemIndex].quantity += parseInt(quantity);
+            updatedItems[existingItemIndex].quantity = totalRequestedQuantity;
             setOrderItems(updatedItems);
         } else {
             // Add new item
             setOrderItems([...orderItems, {
                 product_id: product.id,
                 product_name: product.product_name,
-                quantity: parseInt(quantity),
+                quantity: requestedQuantity,
                 price: product.price,
                 unit: product.unit
             }]);
@@ -191,7 +204,8 @@ export default function AddPurchaseOrderDialog({ open, onOpenChange, onSuccess, 
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <>
+            <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
                     <DialogTitle>Create New Purchase Order</DialogTitle>
@@ -284,24 +298,36 @@ export default function AddPurchaseOrderDialog({ open, onOpenChange, onSuccess, 
                         <div className="grid grid-cols-12 gap-2 items-end">
                             <div className="col-span-6">
                                 <Label htmlFor="product" className="text-sm">Product</Label>
-                                <Select 
-                                    value={selectedProduct} 
-                                    onValueChange={setSelectedProduct}
+                                <Select
+                                    value={selectedProduct}
+                                    onValueChange={(value) => {
+                                        setSelectedProduct(value);
+                                        const product = getSelectedSupplierProducts().find(p => p.id.toString() === value);
+                                        if (product && product.stock_quantity === 0) {
+                                            showAlert('Out of Stock', `${product.product_name} is currently out of stock.`, 'warning');
+                                        }
+                                    }}
                                     disabled={!formData.supplier_id || getSelectedSupplierProducts().length === 0}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder={
-                                            !formData.supplier_id 
-                                                ? "Select supplier first" 
-                                                : getSelectedSupplierProducts().length === 0 
-                                                    ? "No products available" 
+                                            !formData.supplier_id
+                                                ? "Select supplier first"
+                                                : getSelectedSupplierProducts().length === 0
+                                                    ? "No products available"
                                                     : "Select product"
                                         } />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {getSelectedSupplierProducts().map((product) => (
-                                        <SelectItem key={product.id} value={product.id.toString()}>
-                                            {product.product_name} - ₱{Number(product.price).toFixed(2)} / {product.unit}
+                                        <SelectItem key={product.id} value={product.id.toString()} disabled={product.stock_quantity === 0}>
+                                            <div className="flex flex-col">
+                                                <span>{product.product_name} - ₱{Number(product.price).toFixed(2)} / {product.unit}</span>
+                                                <span className={`text-xs ${product.stock_quantity === 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                                                    Stock: {product.stock_quantity} {product.unit}
+                                                    {product.stock_quantity === 0 && ' (Out of Stock)'}
+                                                </span>
+                                            </div>
                                         </SelectItem>
                                     ))}
                                     </SelectContent>
@@ -385,15 +411,16 @@ export default function AddPurchaseOrderDialog({ open, onOpenChange, onSuccess, 
                     </DialogFooter>
                 </form>
             </DialogContent>
-
-            {/* Alert Modal */}
-            <AlertModal
-                isOpen={showAlertModal}
-                onClose={() => setShowAlertModal(false)}
-                title={alertConfig.title}
-                message={alertConfig.message}
-                type={alertConfig.type}
-            />
         </Dialog>
+
+        {/* Alert Modal - Outside Dialog to avoid stacking context issues */}
+        <AlertModal
+            isOpen={showAlertModal}
+            onClose={() => setShowAlertModal(false)}
+            title={alertConfig.title}
+            message={alertConfig.message}
+            type={alertConfig.type}
+        />
+    </>
     );
 }

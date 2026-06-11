@@ -24,7 +24,7 @@ class RentalRequest extends Model
         'priority',
         'admin_notes',
         'rejected_reason',
-        'tracking_number'
+        'tracking_number',
     ];
 
     protected $casts = [

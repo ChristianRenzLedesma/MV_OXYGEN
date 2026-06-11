@@ -43,19 +43,11 @@ class RegisteredUserController extends Controller
         // Verify reCAPTCHA token
         $recaptchaToken = $request->input('recaptcha_token');
         $secretKey = '6LfhidMsAAAAAH5dJ0A5T5oxI_MruAAQDV89Lv_c';
-        
+
         try {
             $response = \Illuminate\Support\Facades\Http::asForm()
                 ->timeout(10)
-                ->withOptions([
-                    'verify' => false, // Disable SSL verification for localhost development
-                    'curl' => [
-                        100 => false, // CURLOPT_SSL_VERIFYPEER
-                        101 => false, // CURLOPT_SSL_VERIFYHOST
-                        28 => 10,    // CURLOPT_CONNECTTIMEOUT
-                        13 => 15,    // CURLOPT_TIMEOUT
-                    ]
-                ])
+                ->withoutVerifying()
                 ->post('https://www.google.com/recaptcha/api/siteverify', [
                     'secret' => $secretKey,
                     'response' => $recaptchaToken,
@@ -69,7 +61,7 @@ class RegisteredUserController extends Controller
         } catch (\Exception $e) {
             // Log the error for debugging
             \Log::error('reCAPTCHA verification error: ' . $e->getMessage());
-            
+
             // For development, allow the request to proceed
             if (app()->environment('local', 'testing')) {
                 // In development, we can bypass reCAPTCHA on SSL errors

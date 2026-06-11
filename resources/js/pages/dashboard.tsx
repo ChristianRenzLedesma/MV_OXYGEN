@@ -302,7 +302,7 @@ export default function Dashboard({
             : 'TRANSACTIONS OVERVIEW';
 
     const accentClass =
-        chartView === 'rental' ? 'text-[#e53935]' : chartView === 'sales' ? 'text-blue-600' : 'text-emerald-600';
+        chartView === 'rental' ? 'text-blue-600' : chartView === 'sales' ? 'text-blue-600' : 'text-emerald-600';
 
     const chartAccent =
         chartView === 'rental'
@@ -455,7 +455,8 @@ export default function Dashboard({
                                 </div>
                             </div>
                             <button
-                                onClick={() => setActiveTab('pending')}
+                                type="button"
+                                onClick={() => router.visit(route('rentals.index', { status: 'pending' }))}
                                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
                             >
                                 <Clock className="w-4 h-4" />

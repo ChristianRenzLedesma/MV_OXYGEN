@@ -88,12 +88,12 @@ const PromptModal: React.FC<PromptModalProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md animate-fadeIn">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4" style={{ pointerEvents: 'none' }}>
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md animate-fadeIn relative z-[10000]" style={{ pointerEvents: 'auto' }}>
                 {getIcon()}
                 <h3 className={`text-2xl font-bold mb-2 ${getTitleColor()}`}>{title}</h3>
                 <p className="text-gray-600 mb-4">{message}</p>
-                
+
                 <div className="mb-4">
                     <textarea
                         value={inputValue}
@@ -104,21 +104,23 @@ const PromptModal: React.FC<PromptModalProps> = ({
                         autoFocus
                     />
                 </div>
-                
+
                 <div className="flex gap-3">
                     <button
+                        type="button"
                         onClick={() => {
                             onClose();
                             setInputValue('');
                         }}
-                        className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                        className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium cursor-pointer"
                     >
                         {cancelText}
                     </button>
                     <button
+                        type="button"
                         onClick={handleSubmit}
                         disabled={!inputValue.trim()}
-                        className={`flex-1 px-4 py-2 text-white rounded-lg transition-colors font-medium ${getConfirmButtonClass()} disabled:opacity-50 disabled:cursor-not-allowed`}
+                        className={`flex-1 px-4 py-2 text-white rounded-lg transition-colors font-medium ${getConfirmButtonClass()} disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer`}
                     >
                         {confirmText}
                     </button>

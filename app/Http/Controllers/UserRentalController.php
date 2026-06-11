@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Activity;
 use App\Models\Customer;
 use App\Models\RentalRequest;
 use App\Models\Rental;
 use App\Models\User;
-use App\Services\GeolocationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -16,12 +16,6 @@ use Inertia\Inertia;
 
 class UserRentalController extends Controller
 {
-    protected $geolocationService;
-
-    public function __construct(GeolocationService $geolocationService)
-    {
-        $this->geolocationService = $geolocationService;
-    }
     public function index()
     {
         $user = Auth::user();
@@ -227,32 +221,7 @@ class UserRentalController extends Controller
             'rejected_reason' => null
         ];
 
-        // Handle geolocation based on pickup type
-        if ($request->pickup_type === 'delivery') {
-            $coordinates = $this->geolocationService->getCoordinatesFromAddress($request->address);
-            if ($coordinates) {
-                $rentalData['delivery_lat'] = $coordinates['lat'];
-                $rentalData['delivery_lng'] = $coordinates['lng'];
-                $rentalData['delivery_address'] = $coordinates['formatted_address'] ?? $request->address;
-            } else {
-                $rentalData['delivery_address'] = $request->address;
-            }
-        } else {
-            // For pickup, set default pickup location (store location)
-            $storeLocation = [
-                'lat' => 14.5995, // Manila coordinates (replace with actual store location)
-                'lng' => 120.9842,
-                'address' => 'MV Oxygen Trading, Manila, Philippines'
-            ];
-            $rentalData['pickup_lat'] = $storeLocation['lat'];
-            $rentalData['pickup_lng'] = $storeLocation['lng'];
-            $rentalData['pickup_address'] = $storeLocation['address'];
-        }
-
-        // Generate tracking number
-        $trackingNumber = 'MVO-' . strtoupper(substr(md5(uniqid(rand(), true)), 0, 8));
-
-        $rentalData['tracking_number'] = $trackingNumber;
+        $rentalData['tracking_number'] = 'MV-' . strtoupper(substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8));
 
         $rentalRequest = RentalRequest::create($rentalData);
 
@@ -563,25 +532,27 @@ class UserRentalController extends Controller
     public function track(RentalRequest $rentalRequest)
     {
         $user = Auth::user();
-        
-        // Find customer record for this user
+
         $customer = Customer::where('name', $user->name)->first();
-        
-        // Ensure user can only track their own requests
+
         if (!$customer || $rentalRequest->customer_id !== $customer->id) {
             abort(403);
         }
 
-        // Prepare rental data with location information
+        $activities = Activity::where('rental_request_id', $rentalRequest->id)
+            ->orderBy('created_at', 'asc')
+            ->get(['action', 'description', 'created_at']);
+
         $rentalData = [
             'id' => $rentalRequest->id,
+            'tracking_number' => $rentalRequest->tracking_number,
             'tank_type' => $rentalRequest->tank_type,
             'status' => $rentalRequest->status,
             'pickup_type' => $rentalRequest->delivery_address ? 'delivery' : 'pickup',
             'created_at' => $rentalRequest->created_at,
+            'activities' => $activities,
         ];
 
-        // Add location data if available
         if ($rentalRequest->delivery_address) {
             $rentalData['delivery_location'] = [
                 'lat' => $rentalRequest->delivery_lat,
@@ -598,53 +569,12 @@ class UserRentalController extends Controller
             ];
         }
 
-        if ($rentalRequest->current_lat && $rentalRequest->current_lng) {
-            $rentalData['current_location'] = [
-                'lat' => $rentalRequest->current_lat,
-                'lng' => $rentalRequest->current_lng
-            ];
-        }
-
-        // Calculate billing information for sidebar
-        $billingInfo = [];
-        $totalOutstandingBalance = 0;
-        if ($customer) {
-            $approvedRentals = RentalRequest::with(['rental'])
-                ->where('customer_id', $customer->id)
-                ->where('status', 'approved')
-                ->get();
-            
-            foreach ($approvedRentals as $request) {
-                if ($request->rental) {
-                    $rental = $request->rental;
-                    $totalAmount = $rental->total_amount ?? 0;
-                    $depositAmount = $rental->deposit_amount ?? 0;
-                    $remainingBalance = max($totalAmount - $depositAmount, 0);
-                    
-                    if ($remainingBalance > 0) {
-                        $billingInfo[] = [
-                            'rental_request_id' => $request->id,
-                            'tank_type' => $request->tank_type,
-                            'total_amount' => $totalAmount,
-                            'deposit_amount' => $depositAmount,
-                            'remaining_balance' => $remainingBalance,
-                            'status' => $request->status,
-                            'pickup_date' => $rental->pickup_date,
-                        ];
-                    }
-                }
-            }
-            $totalOutstandingBalance = array_sum(array_column($billingInfo, 'remaining_balance'));
-        }
-
         return Inertia::render('user/rentals/track', [
             'breadcrumbs' => [
                 ['title' => 'Dashboard', 'href' => '/user/dashboard'],
                 ['title' => 'Track Delivery', 'href' => "/user/rentals/{$rentalRequest->id}/track"]
             ],
             'rental' => $rentalData,
-            'billingInfo' => $billingInfo,
-            'totalOutstandingBalance' => $totalOutstandingBalance,
             'auth' => [
                 'user' => $user
             ]
@@ -818,28 +748,6 @@ class UserRentalController extends Controller
             'delivery_fee' => $request->pickup_type === 'delivery' ? ($request->delivery_fee ?? 0) : 0,
         ];
 
-        // Handle geolocation based on pickup type
-        if ($request->pickup_type === 'delivery') {
-            $coordinates = $this->geolocationService->getCoordinatesFromAddress($request->address);
-            if ($coordinates) {
-                $rentalData['delivery_lat'] = $coordinates['lat'];
-                $rentalData['delivery_lng'] = $coordinates['lng'];
-                $rentalData['delivery_address'] = $coordinates['formatted_address'] ?? $request->address;
-            } else {
-                $rentalData['delivery_address'] = $request->address;
-            }
-        } else {
-            // For pickup, set default pickup location (store location)
-            $storeLocation = [
-                'lat' => 14.5995, // Manila coordinates (replace with actual store location)
-                'lng' => 120.9842,
-                'address' => 'MV Oxygen Trading, Manila, Philippines'
-            ];
-            $rentalData['pickup_lat'] = $storeLocation['lat'];
-            $rentalData['pickup_lng'] = $storeLocation['lng'];
-            $rentalData['pickup_address'] = $storeLocation['address'];
-        }
-
         $rentalRequest->update($rentalData);
 
         return redirect()->route('user.rentals.show', $rentalRequest)
@@ -916,6 +824,7 @@ class UserRentalController extends Controller
             ];
         }
         
+        $sidebarBillingInfo = [];
         if ($customer) {
             $approvedRentals = RentalRequest::with(['rental'])
                 ->where('customer_id', $customer->id)

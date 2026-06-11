@@ -811,7 +811,7 @@ export default function CashierIndex({ tanks }: { tanks: Tank[] }) {
                                                             <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden">
                                                                 {tank.image ? (
                                                                     <img
-                                                                        src={`/storage/${tank.image}`}
+                                                                        src={tank.image}
                                                                         alt={tank.tank_type}
                                                                         className="w-full h-full object-cover"
                                                                         onError={(e) => {
@@ -1003,7 +1003,7 @@ export default function CashierIndex({ tanks }: { tanks: Tank[] }) {
                                                     <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                                                         {item.tank.image ? (
                                                             <img 
-                                                                src={`/storage/${item.tank.image}`} 
+                                                                src={item.tank.image} 
                                                                 alt={item.tank.tank_type}
                                                                 className="w-full h-full object-cover"
                                                                 onError={(e) => {

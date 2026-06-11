@@ -1,9 +1,8 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, Link } from '@inertiajs/react';
-import { Package, Calendar, CheckCircle, AlertCircle, Clock, PlusCircle, History, TrendingUp, MapPin, X, DollarSign } from 'lucide-react';
+import { Package, Calendar, CheckCircle, AlertCircle, Clock, PlusCircle, History, TrendingUp, X, DollarSign, Truck, MapPin } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
-import DeliveryTrackingMap from '@/components/delivery-tracking-map';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -49,12 +48,6 @@ interface RentalRequest {
     city?: string;
     province?: string;
     postal_code?: string;
-    delivery_lat?: number;
-    delivery_lng?: number;
-    delivery_address?: string;
-    pickup_lat?: number;
-    pickup_lng?: number;
-    pickup_address?: string;
     assigned_tank_id?: string;
 }
 
@@ -66,12 +59,6 @@ interface ActiveRental {
     status: string;
     pickup_date?: string;
     rental_request?: RentalRequest;
-    delivery_lat?: number;
-    delivery_lng?: number;
-    delivery_address?: string;
-    pickup_lat?: number;
-    pickup_lng?: number;
-    pickup_address?: string;
 }
 
 interface Stats {
@@ -408,8 +395,7 @@ export default function UserDashboard({ breadcrumbs = [{ title: 'Dashboard', hre
                         </h2>
                         <div className="space-y-4">
                             {activeRentals.map((rental) => {
-                                const isTrackable = ['approved', 'in_transit', 'delivered'].includes(rental.rental_request?.status);
-                                return (
+                                    return (
                                     <div key={rental.id} className="border border-border rounded-lg p-4 hover:shadow-md transition-shadow">
                                         <div className="flex justify-between items-start mb-4">
                                             <div className="flex-1">
@@ -445,46 +431,29 @@ export default function UserDashboard({ breadcrumbs = [{ title: 'Dashboard', hre
                                             </div>
                                         </div>
                                         
-                                        {/* Tracking Section */}
-                                        {isTrackable && (
-                                            <div className="mt-4 pt-4 border-t border-border">
-                                                <div className="flex items-center justify-between mb-3">
-                                                    <h3 className="text-lg font-semibold text-foreground flex items-center">
-                                                        <MapPin className="w-4 h-4 mr-2 text-blue-600" />
-                                                        Track Your Delivery
-                                                    </h3>
+                                        {/* Delivery Status */}
+                                        {['approved', 'in_transit', 'delivered'].includes(rental.rental_request?.status ?? '') && (
+                                            <div className="mt-3 pt-3 border-t border-border">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center text-sm">
+                                                        <Truck className={`w-4 h-4 mr-2 ${
+                                                            rental.rental_request?.status === 'in_transit' ? 'text-orange-500' :
+                                                            rental.rental_request?.status === 'delivered' ? 'text-green-500' :
+                                                            'text-blue-500'
+                                                        }`} />
+                                                        <span className="text-muted-foreground">
+                                                            {rental.rental_request?.status === 'in_transit' ? 'Out for Delivery' :
+                                                             rental.rental_request?.status === 'delivered' ? 'Delivered' :
+                                                             'Ready for Delivery'}
+                                                        </span>
+                                                    </div>
                                                     <a
                                                         href={`/user/rentals/${rental.rental_request?.id}/track`}
                                                         className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
                                                     >
-                                                        View Live Tracking
-                                                        <MapPin className="w-3 h-3 ml-1" />
+                                                        <MapPin className="w-3 h-3 mr-1" />
+                                                        View Details
                                                     </a>
-                                                </div>
-
-                                                {/* Mini Map Preview */}
-                                                <div className="h-32 w-full rounded-lg overflow-hidden border border-border relative" style={{ zIndex: 0 }}>
-                                                    <div className="absolute inset-0" style={{ zIndex: 0 }}>
-                                                        <DeliveryTrackingMap
-                                                            deliveryLocation={
-                                                                rental.rental_request?.delivery_address ? {
-                                                                    lat: rental.rental_request.delivery_lat,
-                                                                    lng: rental.rental_request.delivery_lng,
-                                                                    address: rental.rental_request.delivery_address
-                                                                } : undefined
-                                                            }
-                                                            pickupLocation={
-                                                                rental.rental_request?.pickup_address ? {
-                                                                    lat: rental.rental_request.pickup_lat,
-                                                                    lng: rental.rental_request.pickup_lng,
-                                                                    address: rental.rental_request.pickup_address
-                                                                } : undefined
-                                                            }
-                                                            currentLocation={undefined}
-                                                            isDelivered={rental.rental_request?.status === 'delivered'}
-                                                            className="h-32 w-full"
-                                                        />
-                                                    </div>
                                                 </div>
                                             </div>
                                         )}

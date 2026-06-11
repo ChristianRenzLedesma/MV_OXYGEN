@@ -43,12 +43,12 @@ export default function EditCustomerDialog({ customer, onSuccess }: EditCustomer
             return 'Contact number is required.';
         }
 
-        if (value.length !== 11) {
-            return 'Contact number must be exactly 11 digits.';
+        if (value.length !== 10) {
+            return 'Contact number must be exactly 10 digits (excluding +63).';
         }
 
-        if (!value.startsWith('09')) {
-            return 'Contact number must start with 09.';
+        if (!value.startsWith('9')) {
+            return 'Contact number must start with 9 (e.g., 9123456789).';
         }
 
         return '';
@@ -64,14 +64,15 @@ export default function EditCustomerDialog({ customer, onSuccess }: EditCustomer
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         // Check for contact number warnings before submission
-        const warning = validateContactNumber(data.contact_number);
+        const rawDigits = sanitizePhoneDigits(stripCountryCode(data.contact_number));
+        const warning = validateContactNumber(rawDigits);
         if (warning) {
             setContactWarning(warning);
             return;
         }
-        
+
         put(`/customer/${customer.id}`, {
             onSuccess: () => {
                 setOpen(false);
@@ -139,7 +140,7 @@ export default function EditCustomerDialog({ customer, onSuccess }: EditCustomer
                                     id="contact_number"
                                     type="tel"
                                     inputMode="numeric"
-                                    maxLength={11}
+                                    maxLength={10}
                                     className={`w-full transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                                         contactWarning ? 'border-orange-500 focus:border-orange-500' : ''
                                     }`}

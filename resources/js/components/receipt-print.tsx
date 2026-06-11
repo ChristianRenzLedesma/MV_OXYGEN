@@ -57,33 +57,42 @@ export default function ReceiptPrint({ isOpen, onClose, saleData }: ReceiptPrint
             <head>
                 <title>Receipt</title>
                 <style>
+                    @page {
+                        size: 80mm auto !important;
+                        margin: 0 !important;
+                    }
+                    @media print {
+                        body {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            width: 80mm !important;
+                            font-family: 'Courier New', monospace;
+                            background: white !important;
+                        }
+                        html {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            width: 80mm !important;
+                        }
+                        .receipt-wrapper {
+                            margin: 0 auto !important;
+                            padding: 10px !important;
+                            max-width: 80mm !important;
+                            font-size: 11px !important;
+                            line-height: 1.4 !important;
+                        }
+                    }
                     body {
                         margin: 0;
                         padding: 0;
                         font-family: 'Courier New', monospace;
                         background: white;
-                        text-align: center; /* Fallback for older browsers */
+                        text-align: center;
                     }
-                    /* Ensure the receipt wrapper itself is centered */
                     .receipt-wrapper {
                         margin: 0 auto;
-                        text-align: left; /* Reset text alignment for inner content */
-                        display: inline-block; /* Helps with text-align center on body */
-                    }
-                    @media print {
-                        @page {
-                            size: A4; /* Force A4 paper size */
-                            margin: 0; /* Remove default page margins */
-                        }
-                        html, body {
-                            height: 100vh; /* Full page height */
-                            width: 100%;
-                            margin: 0;
-                            padding: 0;
-                            display: flex;
-                            justify-content: center; /* Horizontal Center */
-                            align-items: center; /* Vertical Center */
-                        }
+                        text-align: left;
+                        display: inline-block;
                     }
                 </style>
             </head>
@@ -150,7 +159,7 @@ export default function ReceiptPrint({ isOpen, onClose, saleData }: ReceiptPrint
         };
 
         return `
-            <div class="receipt-wrapper" style="font-family: 'Courier New', monospace; padding: 10px; max-width: 300px; font-size: 11px; line-height: 1.4;">
+            <div class="receipt-wrapper" style="font-family: 'Courier New', monospace; padding: 10px; max-width: 80mm; font-size: 11px; line-height: 1.4;">
                 <!-- Shop Header -->
                 <div style="text-align: center; margin-bottom: 8px;">
                     <div style="font-size: 16px; font-weight: bold; letter-spacing: 2px;">MV OXYGEN</div>
@@ -307,7 +316,7 @@ export default function ReceiptPrint({ isOpen, onClose, saleData }: ReceiptPrint
                 
                 <div className="space-y-4">
                     {/* Receipt Preview - Classic POS Style */}
-                    <div id="receipt-content" className="bg-white p-4 border rounded font-mono text-xs" style={{ maxWidth: '320px', margin: '0 auto', lineHeight: '1.4' }}>
+                    <div id="receipt-content" className="bg-white p-4 border rounded font-mono text-xs" style={{ maxWidth: '320px', margin: '0 auto', lineHeight: '1.4', width: '80mm' }}>
                         {/* Shop Header */}
                         <div className="text-center mb-2">
                             <div className="font-bold text-sm tracking-wider">MV OXYGEN</div>
